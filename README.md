@@ -1,52 +1,102 @@
 # KelanaAI
 
 KelanaAI is an AI travel assistant built incrementally during MAIN 2026 Phase 2.
-Session 2 adds a deterministic Recommendation Engine and separates business rules
-from terminal input and output.
+Session 3 transforms the console application into a REST API while reusing the
+deterministic Recommendation Engine from Session 2 without changing its business
+rules.
 
-## Session 2 - Recommendation Engine
+## Session 3 - REST API with FastAPI
 
-The console application collects:
+The API exposes three endpoints:
 
-- Destination and country
-- Number of days
-- Total budget and currency
-- Travel month
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/` | Return the KelanaAI welcome message |
+| `GET` | `/health` | Return the service health status |
+| `POST` | `/api/v1/trips` | Calculate daily budget and trip category |
 
-It then derives:
-
-- Trip category: Backpacker, Standard, or Luxury
-- Daily budget: total budget divided by travel days
-- Travel season: Peak, Holiday, or Regular Season
-- A list of recommended places
-
-This session uses explicit Python rules rather than a generative AI model. The same
-input produces the same recommendation.
+The POST endpoint accepts a validated JSON body containing `destination`, `days`,
+and `budget`. The number of days must be greater than zero; invalid request data
+returns HTTP `422` before the business logic runs. FastAPI returns valid results as
+JSON and generates interactive API documentation automatically.
 
 ## Architecture
 
 ```text
-Kelana_ai/
-|-- README.md
-|-- backend/
-|   |-- __init__.py
-|   |-- main.py
-|   `-- services/
-|       |-- __init__.py
-|       `-- trip_service.py
-|-- frontend/
-|   `-- .gitkeep
-`-- tests/
-    `-- test_trip_service.py
+HTTP client / Swagger UI
+          |
+          v
+backend/main.py           FastAPI web and validation layer
+          |
+          v
+backend/services/trip_service.py
+                          Reused Session 2 business rules
 ```
 
-- `backend/main.py` owns the presentation layer: keyboard input and terminal output.
-- `backend/services/trip_service.py` owns reusable calculations and business rules.
+- `backend/main.py` owns the HTTP routes, request validation, and JSON responses.
+- `backend/services/trip_service.py` remains the source of truth for the reusable
+  calculations and category rules.
+- `.venv/` contains local dependencies and is excluded from Git.
 
-The separation lets Session 3 expose the same service functions through FastAPI
-without duplicating the recommendation logic.
+## Requirements
+
+- Python 3.12 or newer
+- FastAPI
+- Uvicorn
+
+Create the isolated environment and install dependencies from the repository root:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+## Run the API
+
+The course command `uvicorn main:app --reload` expects `backend/` to be the active
+directory. From the repository root, run:
+
+```powershell
+Set-Location backend
+..\.venv\Scripts\python.exe -m uvicorn main:app --reload
+```
+
+Open:
+
+- API: `http://localhost:8000`
+- Swagger UI: `http://localhost:8000/docs`
+- OpenAPI schema: `http://localhost:8000/openapi.json`
+
+## Example Request
+
+`POST /api/v1/trips`
+
+```json
+{
+  "destination": "Japan",
+  "days": 5,
+  "budget": 2000
+}
+```
+
+Expected response:
+
+```json
+{
+  "destination": "Japan",
+  "days": 5,
+  "budget": 2000.0,
+  "daily_budget": 400.0,
+  "category": "Standard"
+}
+```
 
 ## Business Rules
+
+The API reuses the Session 2 rules:
+
+- Trip category: Backpacker, Standard, or Luxury
+- Daily budget: total budget divided by travel days
 
 ### Trip Category
 
@@ -56,54 +106,19 @@ without duplicating the recommendation logic.
 | 1000 through 3000 | Standard |
 | Greater than 3000 | Luxury |
 
-### Travel Season
-
-| Month | Season |
-|---|---|
-| December | Peak Season |
-| June | Holiday Season |
-| Other months | Regular Season |
-
-## Requirements
-
-- Python 3.12 or newer
-
-No external Python package is required for Session 2.
-
-## Run the Application
-
-From the repository root:
-
-```bash
-python backend/main.py
-```
-
-Example input:
-
-```text
-Destination  : Japan
-Country      : Japan
-Days         : 5
-Budget       : 1500
-Currency     : USD
-Travel Month : December
-```
-
-The output includes `Standard`, `300 USD/Day`, `Peak Season`, and the three
-recommended places from the assignment.
-
 ## Run the Tests
 
 From the repository root:
 
-```bash
-python -m unittest discover -s tests -v
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-The tests cover category boundaries, season rules, daily budget calculation,
-zero-day failure behavior, and the recommended places list.
+The existing tests verify that the Session 2 business logic still behaves exactly
+as before the web layer was added.
 
 ## Course Checkpoints
 
 - Session 1: tags `v0.1.0` and `session-1`
-- Session 2 target: commit `Add recommendation engine` and tag `session-2`
+- Session 2: commit `Add recommendation engine` and tag `session-2`
+- Session 3 target: commit `Convert KelanaAI into FastAPI` and tag `session-3`

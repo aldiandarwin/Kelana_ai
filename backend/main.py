@@ -1,83 +1,46 @@
-"""Session 2: interactive Recommendation Engine for KelanaAI."""
+"""Session 3: REST API for KelanaAI."""
 
-from services.trip_service import (
-    calculate_daily_budget,
-    get_recommended_places,
-    get_travel_season,
-    get_trip_category,
-)
+from fastapi import FastAPI
+from pydantic import BaseModel, Field
 
+from services.trip_service import calculate_daily_budget, get_trip_category
 
-def format_number(value: float) -> str:
-    """Format a number without unnecessary decimal zeroes."""
-
-    return f"{value:.2f}".rstrip("0").rstrip(".")
+app = FastAPI()
 
 
-def print_trip_summary(
-    destination: str,
-    country: str,
-    days: int,
-    budget: float,
-    currency: str,
-    travel_month: str,
-    category: str,
-    daily_budget: float,
-    season: str,
-    recommended_places: list[str],
-) -> None:
-    """Print the trip details and recommendation results."""
+class TripRequest(BaseModel):
+    """Validated JSON body for a trip recommendation request."""
 
-    budget_text = format_number(budget)
-    daily_budget_text = format_number(daily_budget)
-
-    print("==================================")
-    print("KelanaAI")
-    print("==================================")
-    print(f"Destination      : {destination}")
-    print(f"Country          : {country}")
-    print(f"Days             : {days}")
-    print(f"Budget           : {budget_text} {currency}")
-    print(f"Category         : {category}")
-    print(f"Daily Budget     : {daily_budget_text} {currency}/Day")
-    print(f"Travel Month     : {travel_month}")
-    print(f"Season           : {season}")
-    print()
-    print("Recommended Places")
-
-    for place in recommended_places:
-        print(f"- {place}")
+    destination: str
+    days: int = Field(gt=0)
+    budget: float
 
 
-def main() -> None:
-    """Collect trip details from the terminal and display the summary."""
+@app.get("/")
+def home() -> dict[str, str]:
+    """Return the KelanaAI welcome message."""
 
-    destination = input("Destination  : ").strip()
-    country = input("Country      : ").strip()
-    days = int(input("Days         : "))
-    budget = float(input("Budget       : "))
-    currency = input("Currency     : ").strip()
-    travel_month = input("Travel Month : ").strip()
-
-    category = get_trip_category(budget)
-    daily_budget = calculate_daily_budget(budget, days)
-    season = get_travel_season(travel_month)
-    recommended_places = get_recommended_places()
-
-    print()
-    print_trip_summary(
-        destination,
-        country,
-        days,
-        budget,
-        currency,
-        travel_month,
-        category,
-        daily_budget,
-        season,
-        recommended_places,
-    )
+    return {"message": "Welcome to KelanaAI"}
 
 
-if __name__ == "__main__":
-    main()
+@app.get("/health")
+def health() -> dict[str, str]:
+    """Return a simple service health check."""
+
+    return {"status": "OK"}
+
+
+@app.post("/api/v1/trips")
+def create_trip(request: TripRequest) -> dict[str, str | int | float]:
+    """Create a trip recommendation using the Session 2 business rules."""
+
+    daily_budget = calculate_daily_budget(request.budget, request.days)
+    category = get_trip_category(request.budget)
+
+    return {
+        "destination": request.destination,
+        "days": request.days,
+        "budget": request.budget,
+        "daily_budget": daily_budget,
+        "category": category,
+    }
