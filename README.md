@@ -4,6 +4,8 @@ KelanaAI is an AI travel assistant built incrementally during MAIN 2026 Phase 2.
 Session 3 transforms the console application into a REST API while reusing the
 deterministic Recommendation Engine from Session 2 without changing its business
 rules. Session 4 adds a persistence layer so trips survive a server restart.
+Session 5 adds Amazon Bedrock, so KelanaAI generates an itinerary instead of only
+classifying a budget.
 
 ## Session 3 - REST API with FastAPI
 
@@ -36,6 +38,41 @@ SQLAlchemy, and completes the CRUD surface.
 The business rules are not duplicated in the web layer. `PUT` calls the same
 `calculate_daily_budget()` and `get_trip_category()` used by `POST`.
 
+## Session 5 - Amazon Bedrock
+
+Sessions 2 to 4 could only ever answer with one of three categories. Session 5 adds
+a second path whose output is not limited by a branch count.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/v1/trips/{trip_id}/generate` | Generate an itinerary with Amazon Bedrock, save it, and return it |
+
+The Session 2 rules are not replaced. `category` and `daily_budget` are still
+calculated by `trip_service.py`, and generating a recommendation never changes them.
+The slides call this `Rules + AI`.
+
+`backend/services/bedrock_service.py` is the only module that imports boto3. It
+builds the prompt and calls the Converse API on `amazon.nova-lite-v1:0`.
+
+Two columns were added to `trips`:
+
+- `travel_style`, optional, feeds the prompt and defaults to `General` when empty
+- `ai_recommendation`, `Text` rather than `String` because an itinerary has no
+  length that can be predicted in advance
+
+Both are nullable, so trips saved in Session 4 remain valid.
+
+### When Bedrock fails
+
+A failed model call returns `502` with a readable message, and the API keeps
+serving. It is never allowed to surface as an unhandled `500`.
+
+```json
+{
+  "detail": "Amazon Bedrock could not generate a recommendation: ..."
+}
+```
+
 ## Architecture
 
 ```text
@@ -48,6 +85,12 @@ backend/main.py           FastAPI web and validation layer
           |
           +---> backend/services/trip_service.py
           |                       Reused Session 2 business rules
+          |
+          +---> backend/services/bedrock_service.py
+          |                       Prompt building and the Converse API call
+          |                                |
+          |                                v
+          |                       Amazon Bedrock -> Amazon Nova Lite
           |
           v
 backend/models/trip.py    Trip ORM model
@@ -63,6 +106,7 @@ backend/database.py       engine, SessionLocal, Base
 - `backend/schemas/trip.py` defines the Pydantic request and response shapes.
 - `backend/services/trip_service.py` remains the source of truth for the reusable
   calculations and category rules.
+- `backend/services/bedrock_service.py` is the only module that talks to AWS.
 - `backend/models/trip.py` maps the `Trip` class onto the `trips` table.
 - `backend/database.py` owns the connection pool and the session factory.
 - `.venv/` contains local dependencies and is excluded from Git.
@@ -76,6 +120,9 @@ backend/database.py       engine, SessionLocal, Base
 - SQLAlchemy
 - psycopg2-binary
 - python-dotenv
+- boto3
+- An Amazon Bedrock API key, handed out by the instructor. No AWS account, AWS CLI,
+  or IAM user is needed.
 
 Create the isolated environment and install dependencies from the repository root:
 
@@ -98,15 +145,36 @@ Then copy the connection template and fill in your own password:
 Copy-Item .env.example .env
 ```
 
-`.env` holds `DATABASE_URL` and is listed in `.gitignore`. Never commit it. Only
-`.env.example` belongs in the repository.
+`.env` is listed in `.gitignore`. Never commit it. Only `.env.example` belongs in
+the repository, and its values are placeholders.
 
 ```text
 DATABASE_URL=postgresql+psycopg2://postgres:YOUR_PASSWORD@localhost:5432/kelana_ai
+AWS_BEARER_TOKEN_BEDROCK=YOUR_BEDROCK_API_KEY
+AWS_REGION=ap-southeast-2
+MODEL_ID=amazon.nova-lite-v1:0
 ```
+
+The API key never appears in the source. boto3 reads `AWS_BEARER_TOKEN_BEDROCK`
+from the environment after `load_dotenv()` runs.
 
 The `trips` table is created automatically on startup by
 `Base.metadata.create_all(bind=engine)`. No manual `CREATE TABLE` is needed.
+
+### Adding the Session 5 columns to an existing database
+
+`create_all()` only creates tables that do not exist yet. It does **not** add a
+column to a table that is already there. A database first created in Session 4
+therefore needs the two new columns applied by hand:
+
+```sql
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS travel_style VARCHAR;
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS ai_recommendation TEXT;
+```
+
+Dropping the table would also work, and would also delete every trip already
+saved. Prefer the `ALTER TABLE` above. A database created fresh after Session 5
+needs neither, because `create_all()` builds all nine columns at once.
 
 ## Run the API
 
@@ -146,12 +214,33 @@ Expected response:
   "budget": 2000.0,
   "daily_budget": 400.0,
   "category": "Standard",
-  "created_at": "2026-08-19T08:00:00Z"
+  "created_at": "2026-08-19T08:00:00Z",
+  "travel_style": null,
+  "ai_recommendation": null
 }
 ```
 
 The `id` is generated by PostgreSQL. Restart the server, call `GET /api/v1/trips`,
 and the record is still there.
+
+`travel_style` is optional in the request body, so a three-field body from Session 4
+is still accepted. `ai_recommendation` stays `null` until `/generate` is called.
+
+`POST /api/v1/trips/1/generate`
+
+The request has no body. The trip id in the path is enough, because every detail
+the prompt needs is already stored.
+
+```json
+{
+  "trip_id": 1,
+  "destination": "Japan",
+  "recommendation": "# 5-Day Itinerary for Japan\n\n## Day 1: Tokyo\n..."
+}
+```
+
+The call takes a few seconds, because it waits on the model. Calling `GET
+/api/v1/trips/1` afterwards shows the same text stored in `ai_recommendation`.
 
 ## Business Rules
 
@@ -196,3 +285,4 @@ failure here.
 - Session 2: commit `Add recommendation engine` and tag `session-2`
 - Session 3: commit `Convert KelanaAI into FastAPI` and tag `session-3`
 - Session 4: commit `Add PostgreSQL persistence` and tag `session-4`
+- Session 5: commit `Enhance AI prompt and save recommendation to database` and tag `session-5`

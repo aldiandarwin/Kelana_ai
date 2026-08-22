@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, Float, Integer, String
+from sqlalchemy import Column, DateTime, Float, Integer, String, Text
 
 from database import Base
 
@@ -25,3 +25,8 @@ class Trip(Base):
     category = Column(String, nullable=False)
     daily_budget = Column(Float, nullable=False)
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utc_now)
+
+    # Session 5: both are nullable because trips saved in Session 4 predate them
+    travel_style = Column(String, nullable=True)
+    # Text, not String: an AI itinerary has no length we can predict
+    ai_recommendation = Column(Text, nullable=True)

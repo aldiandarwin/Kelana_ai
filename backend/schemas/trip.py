@@ -11,6 +11,8 @@ class TripRequest(BaseModel):
     destination: str
     days: int = Field(gt=0)
     budget: float
+    # Session 5: optional, so a Session 4 request body with three fields still validates
+    travel_style: str | None = None
 
 
 class TripUpdate(BaseModel):
@@ -31,3 +33,13 @@ class TripResponse(BaseModel):
     daily_budget: float
     category: str
     created_at: datetime
+    travel_style: str | None = None
+    ai_recommendation: str | None = None
+
+
+class TripGenerateResponse(BaseModel):
+    """The reply of POST /api/v1/trips/{trip_id}/generate, shaped as the Session 5 slide."""
+
+    trip_id: int
+    destination: str
+    recommendation: str

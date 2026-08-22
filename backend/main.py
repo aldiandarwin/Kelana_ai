@@ -1,10 +1,20 @@
-"""Session 3: REST API for KelanaAI. Session 4: PostgreSQL persistence."""
+"""Session 3: REST API for KelanaAI. Session 4: PostgreSQL persistence.
+
+Session 5: Amazon Bedrock generates the itinerary. The Session 2 business rules
+are not replaced, they run alongside it.
+"""
 
 from fastapi import FastAPI, HTTPException
 
 from database import Base, SessionLocal, engine
 from models.trip import Trip
-from schemas.trip import TripRequest, TripResponse, TripUpdate
+from schemas.trip import (
+    TripGenerateResponse,
+    TripRequest,
+    TripResponse,
+    TripUpdate,
+)
+from services.bedrock_service import BedrockError, build_prompt, generate_itinerary
 from services.trip_service import calculate_daily_budget, get_trip_category
 
 app = FastAPI()
@@ -41,6 +51,7 @@ def create_trip(request: TripRequest) -> Trip:
         budget=request.budget,
         category=category,
         daily_budget=daily_budget,
+        travel_style=request.travel_style,
     )
 
     # save to PostgreSQL
@@ -117,3 +128,48 @@ def delete_trip(trip_id: int) -> dict[str, str | int]:
     db.close()
 
     return {"deleted_id": trip_id, "status": "deleted"}
+
+
+@app.post(
+    "/api/v1/trips/{trip_id}/generate",
+    response_model=TripGenerateResponse,
+)
+def generate_trip_recommendation(trip_id: int) -> TripGenerateResponse:
+    """Ask Amazon Bedrock for an itinerary, store it on the trip, and return it."""
+
+    db = SessionLocal()
+    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+
+    if trip is None:
+        db.close()
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    prompt = build_prompt(
+        destination=trip.destination,
+        days=trip.days,
+        budget=trip.budget,
+        travel_style=trip.travel_style,
+    )
+
+    try:
+        recommendation = generate_itinerary(prompt)
+    except BedrockError as error:
+        # close the session on the failure path too, otherwise the connection leaks
+        db.close()
+        raise HTTPException(
+            status_code=502,
+            detail=f"Amazon Bedrock could not generate a recommendation: {error}",
+        ) from error
+
+    trip.ai_recommendation = recommendation
+    db.commit()
+
+    # build the reply before closing; commit expires the ORM attributes
+    response = TripGenerateResponse(
+        trip_id=trip.id,
+        destination=trip.destination,
+        recommendation=recommendation,
+    )
+    db.close()
+
+    return response
