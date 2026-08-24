@@ -73,10 +73,30 @@ serving. It is never allowed to surface as an unhandled `500`.
 }
 ```
 
+## Session 6 - Next.js Frontend
+
+Session 6 gives the existing API a responsive browser interface. The homepage
+uses Next.js, React, TypeScript, and Tailwind CSS. It includes:
+
+- a local destination hero image
+- a responsive four-field travel form
+- visible loading and friendly error states
+- AI recommendations rendered as readable cards
+- a mobile layout whose form fields stack vertically
+- a footer with navigation links
+
+The backend keeps ownership of business logic, persistence, and Amazon Bedrock.
+The browser first calls `POST /api/v1/trips` to validate and save the trip, then
+calls `POST /api/v1/trips/{trip_id}/generate` to create the itinerary. FastAPI
+allows requests from the Next.js development origin `http://localhost:3000`.
+
 ## Architecture
 
 ```text
-HTTP client / Swagger UI
+Browser / Next.js (:3000)
+          |
+          v
+HTTP / FastAPI (:8000)
           |
           v
 backend/main.py           FastAPI web and validation layer
@@ -114,6 +134,7 @@ backend/database.py       engine, SessionLocal, Base
 ## Requirements
 
 - Python 3.12 or newer
+- Node.js 20.9 or newer
 - PostgreSQL 16 or newer, running on `localhost:5432`
 - FastAPI
 - Uvicorn
@@ -191,6 +212,24 @@ Open:
 - API: `http://localhost:8000`
 - Swagger UI: `http://localhost:8000/docs`
 - OpenAPI schema: `http://localhost:8000/openapi.json`
+
+## Run the Frontend
+
+Keep FastAPI running, then open a second terminal from the repository root:
+
+```powershell
+Set-Location frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`. The frontend calls
+`http://localhost:8000` by default. To point it to another API, create
+`frontend/.env.local`:
+
+```text
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
 
 ## Example Request
 
@@ -286,3 +325,4 @@ failure here.
 - Session 3: commit `Convert KelanaAI into FastAPI` and tag `session-3`
 - Session 4: commit `Add PostgreSQL persistence` and tag `session-4`
 - Session 5: commit `Enhance AI prompt and save recommendation to database` and tag `session-5`
+- Session 6: commit `Improve the homepage styling and layout` and tag `session-6`

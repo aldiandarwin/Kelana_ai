@@ -5,6 +5,7 @@ are not replaced, they run alongside it.
 """
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 from database import Base, SessionLocal, engine
 from models.trip import Trip
@@ -18,6 +19,15 @@ from services.bedrock_service import BedrockError, build_prompt, generate_itiner
 from services.trip_service import calculate_daily_budget, get_trip_category
 
 app = FastAPI()
+
+# Session 6: allow the Next.js development server to call FastAPI in the browser.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # create the trips table from the ORM model if it does not exist yet
 Base.metadata.create_all(bind=engine)
