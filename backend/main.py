@@ -1,11 +1,15 @@
 """Session 3: REST API for KelanaAI. Session 4: PostgreSQL persistence.
 
 Session 5: Amazon Bedrock generates the itinerary. The Session 2 business rules
-are not replaced, they run alongside it.
+are not replaced, they run alongside it. Session 7 serves saved trips to the
+multi-page dashboard.
 """
+
+import os
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
 
 from database import Base, SessionLocal, engine
 from models.trip import Trip
@@ -18,12 +22,16 @@ from schemas.trip import (
 from services.bedrock_service import BedrockError, build_prompt, generate_itinerary
 from services.trip_service import calculate_daily_budget, get_trip_category
 
+load_dotenv()
+
 app = FastAPI()
 
 # Session 6: allow the Next.js development server to call FastAPI in the browser.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -76,10 +84,10 @@ def create_trip(request: TripRequest) -> Trip:
 
 @app.get("/api/v1/trips", response_model=list[TripResponse])
 def list_trips() -> list[Trip]:
-    """Return every saved trip."""
+    """Return every saved trip, newest first for the history dashboard."""
 
     db = SessionLocal()
-    trips = db.query(Trip).all()
+    trips = db.query(Trip).order_by(Trip.created_at.desc(), Trip.id.desc()).all()
     db.close()
 
     return trips

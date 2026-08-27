@@ -1,50 +1,18 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
-type Trip = {
-  id: number;
-  destination: string;
-  days: number;
-  budget: number;
-  daily_budget: number;
-  category: string;
-  travel_style: string | null;
-};
-
-type GeneratedTrip = {
-  trip_id: number;
-  destination: string;
-  recommendation: string;
-};
-
-type ItinerarySection = {
-  title: string;
-  lines: string[];
-};
-
-function PlaneIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="size-5"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth="1.8"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M6 15.75 4.5 18l1.5.75 3-1.5 3 3v1.5l1.5.75 1.5-3-1.5-4.5 3.75-3.75c1.5-1.5 2.25-3.75 1.5-4.5s-3 0-4.5 1.5L10.5 12 6 10.5l-3 1.5.75 1.5h1.5l3 3-1.5 3Z"
-      />
-    </svg>
-  );
-}
+import { ItineraryContent } from "@/components/ItineraryContent";
+import { SiteFooter } from "@/components/SiteFooter";
+import { SiteHeader } from "@/components/SiteHeader";
+import {
+  createTrip,
+  generateTripRecommendation,
+  getRequestFailureMessage,
+} from "@/services/tripService";
+import type { Trip } from "@/types/trip";
 
 function ArrowIcon() {
   return (
@@ -61,81 +29,21 @@ function ArrowIcon() {
   );
 }
 
-function parseItinerary(markdown: string): ItinerarySection[] {
-  const sections: ItinerarySection[] = [];
-  let current: ItinerarySection | null = null;
-
-  function finishCurrentSection() {
-    if (current && current.lines.length > 0) sections.push(current);
-  }
-
-  for (const rawLine of markdown.split("\n")) {
-    const line = rawLine.trim();
-
-    if (!line) continue;
-
-    if (line.startsWith("## ")) {
-      finishCurrentSection();
-      current = {
-        title: line.replace(/^##\s+/, ""),
-        lines: [],
-      };
-    } else if (line.startsWith("### ")) {
-      current ??= { title: "Your itinerary", lines: [] };
-      current.lines.push(`**${line.replace(/^###\s+/, "")}**`);
-    } else if (!line.startsWith("# ")) {
-      current ??= { title: "Your itinerary", lines: [] };
-      const content = line.replace(/^-\s*/, "");
-      if (!/^-{2,}$/.test(content)) current.lines.push(line);
-    }
-  }
-
-  finishCurrentSection();
-
-  return sections.length
-    ? sections
-    : [{ title: "Your itinerary", lines: [markdown] }];
-}
-
-async function getErrorMessage(response: Response): Promise<string> {
-  try {
-    const body = (await response.json()) as { detail?: string };
-    return body.detail ?? "The travel service could not complete this request.";
-  } catch {
-    return "The travel service could not complete this request.";
-  }
-}
-
-function getRequestFailureMessage(error: unknown): string {
-  if (error instanceof TypeError) {
-    return "We couldn't connect to the travel service. Please try again in a moment.";
-  }
-
-  return error instanceof Error
-    ? error.message
-    : "Unable to generate your itinerary. Please try again.";
-}
-
 export default function Home() {
+  const router = useRouter();
   const [destination, setDestination] = useState("Labuan Bajo");
   const [days, setDays] = useState("5");
   const [budget, setBudget] = useState("2000");
-  const [travelStyle, setTravelStyle] = useState("Culture & nature");
+  const [travelStyle, setTravelStyle] = useState("Family");
   const [trip, setTrip] = useState<Trip | null>(null);
   const [recommendation, setRecommendation] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   async function generateRecommendation(tripId: number) {
-    const response = await fetch(
-      `${API_BASE_URL}/api/v1/trips/${tripId}/generate`,
-      { method: "POST" },
-    );
-
-    if (!response.ok) throw new Error(await getErrorMessage(response));
-
-    const result = (await response.json()) as GeneratedTrip;
+    const result = await generateTripRecommendation(tripId);
     setRecommendation(result.recommendation);
+    router.push("/trips");
   }
 
   async function createTripAndGenerate() {
@@ -145,20 +53,12 @@ export default function Home() {
     setTrip(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/trips`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          destination,
-          days: Number(days),
-          budget: Number(budget),
-          travel_style: travelStyle,
-        }),
+      const createdTrip = await createTrip({
+        destination,
+        days: Number(days),
+        budget: Number(budget),
+        travel_style: travelStyle,
       });
-
-      if (!response.ok) throw new Error(await getErrorMessage(response));
-
-      const createdTrip = (await response.json()) as Trip;
       setTrip(createdTrip);
       await generateRecommendation(createdTrip.id);
     } catch (requestError) {
@@ -190,31 +90,9 @@ export default function Home() {
     }
   }
 
-  const sections = recommendation ? parseItinerary(recommendation) : [];
-
   return (
     <div className="min-h-screen bg-[#f5f7f2] text-slate-950">
-      <header className="absolute inset-x-0 top-0 z-20">
-        <nav
-          aria-label="Primary navigation"
-          className="mx-auto flex max-w-7xl items-center justify-between px-5 py-6 sm:px-8 lg:px-10"
-        >
-          <a href="#top" className="flex items-center gap-2 text-white">
-            <span className="grid size-10 place-items-center rounded-full bg-white/15 backdrop-blur-md">
-              <PlaneIcon />
-            </span>
-            <span className="text-lg font-semibold tracking-tight">KelanaAI</span>
-          </a>
-          <div className="hidden items-center gap-7 text-sm font-medium text-white/85 sm:flex">
-            <a className="transition hover:text-white" href="#planner">
-              Plan a trip
-            </a>
-            <a className="transition hover:text-white" href="#how-it-works">
-              How it works
-            </a>
-          </div>
-        </nav>
-      </header>
+      <SiteHeader overlay />
 
       <main id="top">
         <section className="relative isolate min-h-[660px] overflow-hidden sm:min-h-[720px]">
@@ -316,11 +194,9 @@ export default function Home() {
                     onChange={(event) => setTravelStyle(event.target.value)}
                     className="min-h-13 rounded-xl border border-slate-200 bg-slate-50 px-4 text-base font-medium text-slate-950 outline-none transition focus:border-teal-600 focus:bg-white focus:ring-4 focus:ring-teal-600/10"
                   >
-                    <option>Culture &amp; nature</option>
-                    <option>Food &amp; local life</option>
-                    <option>Adventure</option>
                     <option>Family</option>
-                    <option>Relaxation</option>
+                    <option>Solo</option>
+                    <option>Couple</option>
                   </select>
                 </label>
               </div>
@@ -418,46 +294,8 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="mt-9 grid gap-5 lg:grid-cols-2">
-                {sections.map((section, sectionIndex) => (
-                  <article
-                    key={`${section.title}-${sectionIndex}`}
-                    className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-7"
-                  >
-                    <div className="flex items-start gap-4">
-                      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-amber-100 text-sm font-bold text-amber-900">
-                        {String(sectionIndex + 1).padStart(2, "0")}
-                      </span>
-                      <div>
-                        <h3 className="text-lg font-semibold leading-7 text-slate-950">
-                          {section.title}
-                        </h3>
-                        <div className="mt-3 space-y-2.5 text-sm leading-6 text-slate-600">
-                          {section.lines.map((line, lineIndex) => {
-                            const isBullet = line.startsWith("-");
-                            const isEmphasis = line.includes("**");
-
-                            return (
-                              <p
-                                key={`${line}-${lineIndex}`}
-                                className={[
-                                  isBullet
-                                    ? "relative pl-4 before:absolute before:left-0 before:text-teal-700 before:content-['•']"
-                                    : "",
-                                  isEmphasis ? "font-semibold text-slate-800" : "",
-                                ]
-                                  .filter(Boolean)
-                                  .join(" ")}
-                              >
-                                {line.replace(/^-\s*/, "").replace(/\*\*/g, "")}
-                              </p>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  </article>
-                ))}
+              <div className="mt-9">
+                <ItineraryContent recommendation={recommendation} />
               </div>
             </div>
           )}
@@ -498,29 +336,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="border-t border-white/10 bg-[#072e33] text-white">
-        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-9 sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-10">
-          <div>
-            <div className="flex items-center gap-2 font-semibold">
-              <PlaneIcon /> KelanaAI
-            </div>
-            <p className="mt-2 text-sm text-white/55">
-              © 2026 KelanaAI. Built for MAIN AI Native Software Engineer Bootcamp.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium text-white/65">
-            <a className="transition hover:text-white" href="#top">
-              Home
-            </a>
-            <a className="transition hover:text-white" href="#planner">
-              Plan a trip
-            </a>
-            <a className="transition hover:text-white" href="#how-it-works">
-              How it works
-            </a>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
