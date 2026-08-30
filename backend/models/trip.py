@@ -2,7 +2,8 @@
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, Float, Integer, String, Text
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
 
 from database import Base
 
@@ -19,6 +20,12 @@ class Trip(Base):
     __tablename__ = "trips"
 
     id = Column(Integer, primary_key=True)
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     destination = Column(String, nullable=False)
     days = Column(Integer, nullable=False)
     budget = Column(Float, nullable=False)
@@ -30,3 +37,5 @@ class Trip(Base):
     travel_style = Column(String, nullable=True)
     # Text, not String: an AI itinerary has no length we can predict
     ai_recommendation = Column(Text, nullable=True)
+
+    owner = relationship("User", back_populates="trips")

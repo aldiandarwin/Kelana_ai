@@ -4,3 +4,6 @@ sqlalchemy==2.0.52
 psycopg2-binary==2.9.12
 python-dotenv==1.2.2
 boto3==1.43.56
+bcrypt==5.0.0
+python-jose[cryptography]==3.5.0
+httpx2==2.12.0

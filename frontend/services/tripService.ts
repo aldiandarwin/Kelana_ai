@@ -1,8 +1,11 @@
-import type { GeneratedTrip, Trip, TripRequest } from "@/types/trip";
+import type {
+  GeneratedTrip,
+  Trip,
+  TripRequest,
+  TripUpdate,
+} from "@/types/trip";
 
-const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1"
-).replace(/\/+$/, "");
+const API_URL = "/api/trips";
 
 export class TripServiceError extends Error {
   constructor(
@@ -16,33 +19,46 @@ export class TripServiceError extends Error {
 
 async function readError(response: Response): Promise<string> {
   try {
-    const body = (await response.json()) as { detail?: string };
-    return body.detail ?? "The travel service could not complete this request.";
+    const body = (await response.json()) as {
+      detail?: string | Array<{ msg?: string }>;
+    };
+    if (typeof body.detail === "string") return body.detail;
+    if (Array.isArray(body.detail)) {
+      return body.detail.map((item) => item.msg).filter(Boolean).join(". ");
+    }
   } catch {
-    return "The travel service could not complete this request.";
+    // Fall through to the stable user-facing message.
   }
+  return "The travel service could not complete this request.";
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(API_URL + path, init);
+  const response = await fetch(API_URL + path, {
+    ...init,
+    credentials: "same-origin",
+  });
 
   if (!response.ok) {
-    throw new TripServiceError(await readError(response), response.status);
+    const error = new TripServiceError(await readError(response), response.status);
+    if (response.status === 401 && typeof window !== "undefined") {
+      window.dispatchEvent(new Event("kelana:unauthorized"));
+    }
+    throw error;
   }
 
   return (await response.json()) as T;
 }
 
 export function getTrips(): Promise<Trip[]> {
-  return request<Trip[]>("/trips", { cache: "no-store" });
+  return request<Trip[]>("", { cache: "no-store" });
 }
 
 export function getTrip(id: number): Promise<Trip> {
-  return request<Trip>("/trips/" + id, { cache: "no-store" });
+  return request<Trip>("/" + id, { cache: "no-store" });
 }
 
 export function createTrip(data: TripRequest): Promise<Trip> {
-  return request<Trip>("/trips", {
+  return request<Trip>("", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -50,9 +66,23 @@ export function createTrip(data: TripRequest): Promise<Trip> {
 }
 
 export function generateTripRecommendation(id: number): Promise<GeneratedTrip> {
-  return request<GeneratedTrip>("/trips/" + id + "/generate", {
+  return request<GeneratedTrip>("/" + id + "/generate", {
     method: "POST",
   });
+}
+
+export function updateTrip(id: number, data: TripUpdate): Promise<Trip> {
+  return request<Trip>("/" + id, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteTrip(
+  id: number,
+): Promise<{ deleted_id: number; status: string }> {
+  return request("/" + id, { method: "DELETE" });
 }
 
 export function getRequestFailureMessage(error: unknown): string {

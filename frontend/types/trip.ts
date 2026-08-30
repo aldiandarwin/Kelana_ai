@@ -1,5 +1,6 @@
 export type Trip = {
   id: number;
+  user_id: number;
   destination: string;
   days: number;
   budget: number;
@@ -21,4 +22,8 @@ export type GeneratedTrip = {
   trip_id: number;
   destination: string;
   recommendation: string;
+};
+
+export type TripUpdate = {
+  budget: number;
 };

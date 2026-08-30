@@ -8,9 +8,9 @@ from pydantic import BaseModel, ConfigDict, Field
 class TripRequest(BaseModel):
     """Validated JSON body for a trip recommendation request."""
 
-    destination: str
+    destination: str = Field(min_length=2, max_length=150)
     days: int = Field(gt=0)
-    budget: float
+    budget: float = Field(gt=0)
     # Session 5: optional, so a Session 4 request body with three fields still validates
     travel_style: str | None = None
 
@@ -18,7 +18,7 @@ class TripRequest(BaseModel):
 class TripUpdate(BaseModel):
     """Validated JSON body for updating the budget of a saved trip."""
 
-    budget: float
+    budget: float = Field(gt=0)
 
 
 class TripResponse(BaseModel):
@@ -27,6 +27,7 @@ class TripResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    user_id: int
     destination: str
     days: int
     budget: float

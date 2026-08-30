@@ -5,8 +5,9 @@ Session 3 transforms the console application into a REST API while reusing the
 deterministic Recommendation Engine from Session 2 without changing its business
 rules. Session 4 adds a persistence layer so trips survive a server restart.
 Session 5 adds Amazon Bedrock, so KelanaAI generates an itinerary instead of only
-classifying a budget. Session 6 adds the responsive homepage, and Session 7 turns
-the frontend into a multi-page trip dashboard.
+classifying a budget. Session 6 adds the responsive homepage, Session 7 turns the
+frontend into a multi-page trip dashboard, and Session 8 makes every trip private
+to one authenticated user.
 
 ## Session 3 - REST API with FastAPI
 
@@ -120,6 +121,46 @@ The dashboard includes:
 Browsing history and opening a saved trip only read PostgreSQL. Amazon Bedrock is
 called only when the user generates a new itinerary.
 
+## Session 8 - JWT Authentication and Trip Ownership
+
+Session 8 separates authentication (who is calling) from authorization (which
+trip that caller may access). Passwords are hashed with bcrypt, login returns a
+signed JWT, and FastAPI derives `user_id` from that token. The frontend never
+sends a user id when it creates a trip.
+
+| Method | Path | Protection |
+|---|---|---|
+| `POST` | `/api/v1/auth/register` | Public; stores a bcrypt hash, never plain text |
+| `POST` | `/api/v1/auth/login` | Public; returns a short-lived Bearer JWT |
+| `GET` | `/api/v1/auth/me` | JWT required; returns the current user and trip count |
+| `POST` | `/api/v1/trips` | JWT required; backend assigns `user_id` |
+| `GET` | `/api/v1/trips` | JWT required; filters by the current `user_id` |
+| `GET` | `/api/v1/trips/{trip_id}` | JWT and matching owner required |
+| `PUT` | `/api/v1/trips/{trip_id}` | Returns `403` for another user's trip |
+| `DELETE` | `/api/v1/trips/{trip_id}` | Returns `403` for another user's trip |
+| `POST` | `/api/v1/trips/{trip_id}/generate` | JWT and matching owner required |
+
+Next.js stores the JWT in an `HttpOnly`, `SameSite=Lax` cookie through Route
+Handlers. Browser JavaScript cannot read the token. `frontend/proxy.ts` performs
+the fast redirect check for `/`, `/trips`, `/trips/[id]`, and `/profile`, while
+FastAPI remains the security boundary that validates every token and ownership
+decision.
+
+The frontend adds responsive `/login` and `/register` pages, a personalized
+header, logout, `/profile`, and private trip list/detail states.
+
+### Upgrade an existing Session 7 database
+
+Run the idempotent migration once from `backend/`:
+
+```powershell
+..\.venv\Scripts\python.exe migrate_session_8.py
+```
+
+The migration creates `users`, adds `trips.user_id`, preserves pre-auth trips
+under a disabled internal `Legacy Import` owner, then enforces `NOT NULL`, an
+index, and the foreign key. It does not delete existing trip data.
+
 ## Architecture
 
 ```text
@@ -132,6 +173,9 @@ HTTP / FastAPI (:8000)
 backend/main.py           FastAPI web and validation layer
           |
           +---> backend/schemas/trip.py    request and response shapes
+          +---> backend/schemas/auth.py    auth and profile shapes
+          +---> backend/dependencies/auth.py
+          |                       Bearer JWT -> current User
           |
           +---> backend/services/trip_service.py
           |                       Reused Session 2 business rules
@@ -144,6 +188,7 @@ backend/main.py           FastAPI web and validation layer
           |
           v
 backend/models/trip.py    Trip ORM model
+backend/models/user.py    User ORM model; one user owns many trips
           |
           v
 backend/database.py       engine, SessionLocal, Base
@@ -157,7 +202,9 @@ backend/database.py       engine, SessionLocal, Base
 - `backend/services/trip_service.py` remains the source of truth for the reusable
   calculations and category rules.
 - `backend/services/bedrock_service.py` is the only module that talks to AWS.
+- `backend/services/auth_service.py` owns bcrypt hashing and JWT verification.
 - `backend/models/trip.py` maps the `Trip` class onto the `trips` table.
+- `frontend/app/api/` stores the JWT as an HttpOnly cookie and forwards API calls.
 - `backend/database.py` owns the connection pool and the session factory.
 - `.venv/` contains local dependencies and is excluded from Git.
 
@@ -172,6 +219,9 @@ backend/database.py       engine, SessionLocal, Base
 - psycopg2-binary
 - python-dotenv
 - boto3
+- bcrypt
+- python-jose with the cryptography backend
+- httpx2 for FastAPI integration tests
 - An Amazon Bedrock API key, handed out by the instructor. No AWS account, AWS CLI,
   or IAM user is needed.
 
@@ -205,7 +255,17 @@ AWS_BEARER_TOKEN_BEDROCK=YOUR_BEDROCK_API_KEY
 AWS_REGION=ap-southeast-2
 MODEL_ID=amazon.nova-lite-v1:0
 FRONTEND_URL=http://localhost:3000
+JWT_SECRET_KEY=GENERATE_A_RANDOM_SECRET_AT_LEAST_32_CHARACTERS
+ACCESS_TOKEN_EXPIRE_MINUTES=480
 ```
+
+Generate a real local JWT secret, then paste the result into `.env`:
+
+```powershell
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+Never commit the generated value.
 
 The API key never appears in the source. boto3 reads `AWS_BEARER_TOKEN_BEDROCK`
 from the environment after `load_dotenv()` runs.
@@ -227,6 +287,9 @@ ALTER TABLE trips ADD COLUMN IF NOT EXISTS ai_recommendation TEXT;
 Dropping the table would also work, and would also delete every trip already
 saved. Prefer the `ALTER TABLE` above. A database created fresh after Session 5
 needs neither, because `create_all()` builds all nine columns at once.
+
+An existing Session 7 database also needs the Session 8 ownership migration
+documented above before the updated API starts.
 
 ## Run the API
 
@@ -254,15 +317,21 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`. The frontend calls
-`http://localhost:8000/api/v1` by default. To point it to another API, create
+Open `http://localhost:3000`. Next.js Route Handlers call
+`http://localhost:8000/api/v1` by default. To point them to another API, create
 `frontend/.env.local`:
 
 ```text
-NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+API_URL=http://localhost:8000/api/v1
 ```
 
 ## Example Request
+
+Login first, then include the token on every protected request:
+
+```text
+Authorization: Bearer <access_token>
+```
 
 `POST /api/v1/trips`
 
@@ -280,6 +349,7 @@ Expected response:
 ```json
 {
   "id": 1,
+  "user_id": 1,
   "destination": "Japan",
   "days": 5,
   "budget": 2000.0,
@@ -337,9 +407,10 @@ From the repository root:
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-The existing tests verify that the Session 2 business logic still behaves exactly
-as before the web layer was added. They need no database, because the business
-rules never touch one.
+The suite keeps the Session 2 business-rule coverage and adds an in-memory
+Session 8 integration test. It registers two users and proves anonymous requests
+return `401`, lists are isolated, frontend-supplied `user_id` is ignored, and
+cross-user detail/update/delete/generate requests return `403`.
 
 ## Working Directory
 
@@ -361,3 +432,5 @@ failure here.
 - Session 6: commit `Improve the homepage styling and layout` and tag `session-6`
 - Session 7: commit `Create trip dashboard and enhance trip card components` and
   tag `session-7`
+- Session 8 target: commit `Protect CRUD endpoints to respect user ownership` and
+  tag `session-8`

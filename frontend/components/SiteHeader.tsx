@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+
+import { useAuth } from "@/components/AuthProvider";
 
 function PlaneIcon() {
   return (
@@ -20,6 +24,7 @@ function PlaneIcon() {
 }
 
 export function SiteHeader({ overlay = false }: { overlay?: boolean }) {
+  const { user, loading, logout } = useAuth();
   const linkColor = overlay
     ? "text-white/85 hover:text-white"
     : "text-slate-600 hover:text-teal-800";
@@ -54,7 +59,7 @@ export function SiteHeader({ overlay = false }: { overlay?: boolean }) {
           <span className="text-lg font-semibold tracking-tight">KelanaAI</span>
         </Link>
 
-        <div className="flex items-center gap-4 text-sm font-semibold sm:gap-7">
+        <div className="flex items-center gap-3 text-sm font-semibold sm:gap-5">
           <Link
             className={"hidden transition sm:inline " + linkColor}
             href="/"
@@ -67,6 +72,22 @@ export function SiteHeader({ overlay = false }: { overlay?: boolean }) {
           >
             Plan a trip
           </Link>
+          {!loading && user && (
+            <span
+              className={
+                "hidden max-w-40 truncate lg:inline " +
+                (overlay ? "text-white/70" : "text-slate-500")
+              }
+            >
+              Welcome, {user.name.split(" ")[0]}
+            </span>
+          )}
+          <Link
+            className={"transition " + linkColor}
+            href="/profile"
+          >
+            Profile
+          </Link>
           <Link
             href="/trips"
             className={
@@ -78,6 +99,18 @@ export function SiteHeader({ overlay = false }: { overlay?: boolean }) {
           >
             My trips
           </Link>
+          <button
+            type="button"
+            onClick={() => void logout()}
+            className={
+              "transition " +
+              (overlay
+                ? "text-white/75 hover:text-white"
+                : "text-slate-500 hover:text-rose-700")
+            }
+          >
+            Logout
+          </button>
         </div>
       </nav>
     </header>
