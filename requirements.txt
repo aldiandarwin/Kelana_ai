@@ -7,3 +7,4 @@ boto3==1.43.56
 bcrypt==5.0.0
 python-jose[cryptography]==3.5.0
 httpx2==2.12.0
+pypdf==6.16.2

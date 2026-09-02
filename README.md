@@ -7,7 +7,8 @@ rules. Session 4 adds a persistence layer so trips survive a server restart.
 Session 5 adds Amazon Bedrock, so KelanaAI generates an itinerary instead of only
 classifying a budget. Session 6 adds the responsive homepage, Session 7 turns the
 frontend into a multi-page trip dashboard, and Session 8 makes every trip private
-to one authenticated user.
+to one authenticated user. Session 9 adds retrieval, so KelanaAI can answer a
+factual travel question from trusted documents and name the document it used.
 
 ## Session 3 - REST API with FastAPI
 
@@ -161,6 +162,98 @@ The migration creates `users`, adds `trips.user_id`, preserves pre-auth trips
 under a disabled internal `Legacy Import` owner, then enforces `NOT NULL`, an
 index, and the foreign key. It does not delete existing trip data.
 
+## Session 9 - Knowledge Base and Grounded Answers
+
+Session 5 gave KelanaAI a model. A model knows what it was trained on, and nothing
+about Sinaptik Travel's baggage policy. Session 9 retrieves the relevant passages
+from a document set first, and only then asks the model to write.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/v1/assistant` | Answer one travel question from the knowledge base and name the sources used |
+
+The endpoint is protected exactly like the rest of the API. The response carries
+`grounded` and `mode` alongside the answer, so the caller can tell a retrieved
+answer from a refusal.
+
+```json
+{
+  "question": "What does excess baggage cost per kilogram on a regional Asia route?",
+  "answer": "Excess baggage is charged at IDR 110,000 per kilogram per leg. [Source: sinaptik-travel-policy.md]",
+  "sources": [{ "document": "sinaptik-travel-policy.md", "excerpt": "...", "score": 0.7744 }],
+  "grounded": true,
+  "mode": "local-vector-store"
+}
+```
+
+### The two retrieval paths
+
+`backend/services/knowledge_service.py` picks a path from configuration, and the
+rest of the application cannot tell the difference.
+
+| Path | Active when | What it uses |
+|---|---|---|
+| `local-vector-store` | `KNOWLEDGE_BASE_ID` is empty | Titan embeddings, vectors in PostgreSQL, hybrid semantic/lexical ranking |
+| `bedrock-knowledge-base` | `KNOWLEDGE_BASE_ID` is set | `bedrock-agent-runtime` `RetrieveAndGenerate` |
+
+The local path is the one that runs today, and the reason is a documented AWS
+limit rather than a preference. An Amazon Bedrock API key is restricted to Amazon
+Bedrock and Amazon Bedrock Runtime actions, and cannot be used with Agents for
+Amazon Bedrock or Agents for Amazon Bedrock Runtime operations. `CreateKnowledgeBase`
+and `RetrieveAndGenerate` are on the wrong side of that line, and the key cannot
+sign an Amazon S3 request at all.
+
+`InvokeModel` is a Bedrock Runtime action, so `amazon.titan-embed-text-v2:0` is
+available in `ap-southeast-2` with the key the class hands out. That is what makes
+a genuine semantic retriever possible without an AWS account.
+
+`backend/sync_knowledge_to_s3.py` implements the managed path in full. It refuses
+to run without IAM credentials and says why, rather than failing obscurely.
+
+### Loading the documents
+
+Source documents live in `knowledge/` and are committed, so a reviewer can read
+them next to the answers they produced. Markdown, text, and PDF are supported;
+PDF page markers are retained for source citations. Run the ingestion from
+`backend/`:
+
+```powershell
+..\.venv\Scripts\python.exe ingest_knowledge.py
+```
+
+Each document is split on paragraph boundaries into roughly 900 character chunks
+with a 150 character overlap, embedded, and written to `knowledge_chunks`. The
+script deletes a document's existing rows before writing new ones, so re-running
+it after an edit never duplicates anything.
+
+`knowledge_chunks` is a new table, so `Base.metadata.create_all()` builds it. No
+migration script is needed, unlike Session 8 which altered an existing table.
+
+### When the documents do not cover the question
+
+Retrieval scores every chunk with a 60% semantic and 40% lexical blend, then
+keeps the best four. If the best score falls below the floor in
+`knowledge_service.MINIMUM_SCORE`, the model is never called
+and the endpoint returns `grounded: false` with an honest refusal. Not calling the
+model is the point. A model that is asked will answer, and an answer with no
+source behind it is the failure mode retrieval exists to prevent.
+
+### Comparing retrieval against the bare model
+
+```powershell
+..\.venv\Scripts\python.exe compare_rag_vs_base.py
+```
+
+The five questions in `knowledge/evaluation-questions.json` are each asked twice,
+once with retrieval and once without. The result is written to
+`evidence/session-09-rag-vs-base.md`.
+
+The final Bangladesh expansion uses three official Bangladesh Tourism Board
+PDFs. Across five paired questions, RAG stated 24 of 24 expected facts and
+retrieved the required source in every case; the base model stated 2 of 24.
+The submission-ready analysis is rendered as
+`output/pdf/session-09-bangladesh-rag-vs-base.pdf`.
+
 ## Architecture
 
 ```text
@@ -181,14 +274,18 @@ backend/main.py           FastAPI web and validation layer
           |                       Reused Session 2 business rules
           |
           +---> backend/services/bedrock_service.py
-          |                       Prompt building and the Converse API call
+          |                       Prompt building, Converse, and embeddings
           |                                |
           |                                v
-          |                       Amazon Bedrock -> Amazon Nova Lite
+          |                       Amazon Bedrock -> Nova Lite, Titan Embeddings
+          |
+          +---> backend/services/knowledge_service.py
+          |                       Chunk, rank, and ground the answer
           |
           v
-backend/models/trip.py    Trip ORM model
-backend/models/user.py    User ORM model; one user owns many trips
+backend/models/trip.py      Trip ORM model
+backend/models/user.py      User ORM model; one user owns many trips
+backend/models/knowledge.py KnowledgeChunk ORM model; one retrievable passage
           |
           v
 backend/database.py       engine, SessionLocal, Base
@@ -202,8 +299,12 @@ backend/database.py       engine, SessionLocal, Base
 - `backend/services/trip_service.py` remains the source of truth for the reusable
   calculations and category rules.
 - `backend/services/bedrock_service.py` is the only module that talks to AWS.
+- `backend/services/knowledge_service.py` owns chunking, ranking, and grounding,
+  and deliberately imports no boto3 so that rule stays true.
 - `backend/services/auth_service.py` owns bcrypt hashing and JWT verification.
 - `backend/models/trip.py` maps the `Trip` class onto the `trips` table.
+- `knowledge/` holds the source documents, committed so answers can be checked
+  against them.
 - `frontend/app/api/` stores the JWT as an HttpOnly cookie and forwards API calls.
 - `backend/database.py` owns the connection pool and the session factory.
 - `.venv/` contains local dependencies and is excluded from Git.
@@ -412,6 +513,12 @@ Session 8 integration test. It registers two users and proves anonymous requests
 return `401`, lists are isolated, frontend-supplied `user_id` is ignored, and
 cross-user detail/update/delete/generate requests return `403`.
 
+Session 9 adds chunking, ranking, retrieval, and assistant endpoint tests. None
+of them calls AWS. The chunking and similarity functions are pure, and the
+endpoint tests patch the Bedrock entry points with `unittest.mock`, which is the
+first use of patching in this repository. It is here because Session 9 is the
+first feature whose happy path cannot be reached without an AWS call.
+
 ## Working Directory
 
 The repository uses two working directories, and mixing them is the most common
@@ -432,5 +539,7 @@ failure here.
 - Session 6: commit `Improve the homepage styling and layout` and tag `session-6`
 - Session 7: commit `Create trip dashboard and enhance trip card components` and
   tag `session-7`
-- Session 8 target: commit `Protect CRUD endpoints to respect user ownership` and
+- Session 8: commit `Protect CRUD endpoints to respect user ownership` and
   tag `session-8`
+- Session 9 target: commit `Expand Knowledge Base and compare RAG vs base-model answers`
+  and tag `session-9`

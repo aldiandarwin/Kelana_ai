@@ -72,6 +72,12 @@ export function SiteHeader({ overlay = false }: { overlay?: boolean }) {
           >
             Plan a trip
           </Link>
+          <Link
+            className={"transition " + linkColor}
+            href="/assistant"
+          >
+            Assistant
+          </Link>
           {!loading && user && (
             <span
               className={

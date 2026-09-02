@@ -1,0 +1,33 @@
+{
+  "country": "Bangladesh",
+  "publisher": "Bangladesh Tourism Board",
+  "accessed_at": "2026-09-02",
+  "official_publications_page": "https://tourismboard.gov.bd/pages/static-pages/6922dd43933eb65569e14320",
+  "license_note": "No explicit open-content license was found on the source pages. Retain publisher attribution and use the files for this educational assignment.",
+  "documents": [
+    {
+      "filename": "bangladesh-tourist-handbook.pdf",
+      "title": "Bangladesh Tourist Hand Book",
+      "pages": 76,
+      "sha256": "F7F94802736536F6F34806A47E9AF58607F03B45C1836A25286B94D1484DDF6F",
+      "url": "https://objectstorage.ap-dcc-gazipur-1.oraclecloud15.com/n/axvjbnqprylg/b/V2Ministry/o/office-tourismboard/2024/12/39676297d79342e5aed6ba4a921f5930.pdf",
+      "evaluation_cases": ["Q1", "Q2"]
+    },
+    {
+      "filename": "bangladesh-sundarbans.pdf",
+      "title": "Sundarbans",
+      "pages": 8,
+      "sha256": "82FFB983FBCE26734027E80977F1B056C3BD21C765FF784CC1D8D44B2001433A",
+      "url": "https://objectstorage.ap-dcc-gazipur-1.oraclecloud15.com/n/axvjbnqprylg/b/V2Ministry/o/office-tourismboard/2024/12/0f4bd765e38946ffacf52aef65005ee5.pdf",
+      "evaluation_cases": ["Q3", "Q4"]
+    },
+    {
+      "filename": "bangladesh-world-heritage-tour.pdf",
+      "title": "World Heritage Tour - 12 Nights, 13 Days",
+      "pages": 2,
+      "sha256": "BD79FA6C257D6224E36BAFD124B2A3E00A730E5A21D81D1CBC2D48EBD0D72184",
+      "url": "https://objectstorage.ap-dcc-gazipur-1.oraclecloud15.com/n/axvjbnqprylg/b/V2Ministry/o/office-tourismboard/2024/12/283c346d7ee847abab6d3ac3ae53a485.pdf",
+      "evaluation_cases": ["Q5"]
+    }
+  ]
+}

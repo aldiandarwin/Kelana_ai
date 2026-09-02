@@ -28,3 +28,6 @@ frontend/*.tsbuildinfo
 
 # Local code graph cache
 graphify-out/
+
+# Generated QA intermediates (final reports live in output/)
+tmp/

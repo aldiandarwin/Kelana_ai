@@ -1,9 +1,13 @@
 """Session 5: Amazon Bedrock integration for KelanaAI.
 
-This is the only module that knows about boto3. main.py reaches Bedrock through
-the two functions below, never through the AWS SDK directly.
+This is the only module that knows about boto3. main.py and knowledge_service.py
+reach Bedrock through the functions below, never through the AWS SDK directly.
+
+Session 9 adds embeddings and a second question-answering entry point here for
+the same reason, so that the retrieval layer stays free of AWS concerns.
 """
 
+import json
 import os
 
 import boto3
@@ -21,6 +25,15 @@ client = boto3.client(
 
 # trips saved in Session 4 have no travel style, so the prompt needs a fallback
 DEFAULT_TRAVEL_STYLE = "General"
+
+# Session 9: Titan Text Embeddings V2 is supported in ap-southeast-2 and accepts
+# 256, 512, or 1024 dimensions. 1024 is the documented default.
+DEFAULT_EMBEDDING_MODEL_ID = "amazon.titan-embed-text-v2:0"
+EMBEDDING_DIMENSIONS = 1024
+
+# built on first use, not at import, so the test suite never waits on a client
+# it does not need. Only the managed Knowledge Base path touches it.
+_agent_client = None
 
 
 class BedrockError(RuntimeError):
@@ -56,22 +69,129 @@ def build_prompt(
     )
 
 
-def generate_itinerary(prompt: str) -> str:
-    """Send the prompt to Amazon Bedrock and return the generated itinerary."""
+def _converse(
+    prompt: str,
+    *,
+    temperature: float | None = None,
+    max_tokens: int | None = None,
+) -> str:
+    """Send one prompt through the Converse API and return the generated text."""
+
+    inference_config = {}
+    if temperature is not None:
+        inference_config["temperature"] = temperature
+    if max_tokens is not None:
+        inference_config["maxTokens"] = max_tokens
 
     try:
         # content is a list of blocks, not a plain string
-        response = client.converse(
-            modelId=os.getenv("MODEL_ID"),
-            messages=[
+        request = {
+            "modelId": os.getenv("MODEL_ID"),
+            "messages": [
                 {
                     "role": "user",
                     "content": [{"text": prompt}],
                 }
             ],
+        }
+        if inference_config:
+            request["inferenceConfig"] = inference_config
+
+        response = client.converse(
+            **request,
         )
     except (BotoCoreError, ClientError) as error:
         # an AWS failure must never escape as a 500 and take the API down with it
         raise BedrockError(str(error)) from error
 
     return response["output"]["message"]["content"][0]["text"]
+
+
+def generate_itinerary(prompt: str) -> str:
+    """Send the prompt to Amazon Bedrock and return the generated itinerary."""
+
+    return _converse(prompt)
+
+
+def generate_answer(prompt: str) -> str:
+    """Session 9: deterministic settings make paired evaluations comparable."""
+
+    return _converse(prompt, temperature=0.0, max_tokens=500)
+
+
+def embed_text(text: str) -> list[float]:
+    """Session 9: turn one passage or question into a vector with Titan Text Embeddings V2."""
+
+    model_id = os.getenv("EMBEDDING_MODEL_ID", DEFAULT_EMBEDDING_MODEL_ID)
+
+    try:
+        # embeddings use invoke_model, not converse: Converse is for chat models
+        response = client.invoke_model(
+            body=json.dumps(
+                {
+                    "inputText": text,
+                    "dimensions": EMBEDDING_DIMENSIONS,
+                    # normalised vectors make cosine similarity a plain dot product
+                    "normalize": True,
+                }
+            ),
+            modelId=model_id,
+            accept="application/json",
+            contentType="application/json",
+        )
+    except (BotoCoreError, ClientError) as error:
+        raise BedrockError(str(error)) from error
+
+    return json.loads(response["body"].read())["embedding"]
+
+
+def retrieve_and_generate(question: str, knowledge_base_id: str) -> dict:
+    """Session 9: ask a managed Amazon Bedrock Knowledge Base to retrieve, then answer.
+
+    This is the path the slides teach. It needs IAM credentials, because an
+    Amazon Bedrock API key does not cover Agents for Amazon Bedrock Runtime
+    actions. It stays unused until KNOWLEDGE_BASE_ID is set.
+    """
+
+    global _agent_client
+    if _agent_client is None:
+        # bedrock-agent-runtime, not bedrock-runtime: retrieval is a different service
+        _agent_client = boto3.client(
+            service_name="bedrock-agent-runtime",
+            region_name=os.getenv("AWS_REGION"),
+        )
+
+    region = os.getenv("AWS_REGION")
+    model_id = os.getenv("MODEL_ID")
+
+    try:
+        response = _agent_client.retrieve_and_generate(
+            input={"text": question},
+            retrieveAndGenerateConfiguration={
+                "type": "KNOWLEDGE_BASE",
+                "knowledgeBaseConfiguration": {
+                    "knowledgeBaseId": knowledge_base_id,
+                    "modelArn": f"arn:aws:bedrock:{region}::foundation-model/{model_id}",
+                    "retrievalConfiguration": {
+                        # vectorSearchConfiguration, not the slide's managedSearchConfiguration
+                        "vectorSearchConfiguration": {"numberOfResults": 4}
+                    },
+                },
+            },
+        )
+    except (BotoCoreError, ClientError) as error:
+        raise BedrockError(str(error)) from error
+
+    sources = []
+    for citation in response.get("citations", []):
+        for reference in citation.get("retrievedReferences", []):
+            uri = reference.get("location", {}).get("s3Location", {}).get("uri", "")
+            sources.append(
+                {
+                    "document": uri.rsplit("/", 1)[-1] or uri,
+                    "excerpt": reference.get("content", {}).get("text", "")[:400],
+                    "score": None,
+                }
+            )
+
+    return {"answer": response["output"]["text"], "sources": sources}

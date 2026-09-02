@@ -1,0 +1,113 @@
+{
+  "purpose": "Session 9 homework evaluation. The same five Bangladesh questions are sent to the base model and to RAG, using only facts in the three newly added official PDFs.",
+  "scoring": "A fact counts as stated when any accepted string appears in the answer after case-folding and whitespace normalisation. Source citation is scored separately. This convenience sample demonstrates retrieval behavior; it is not a population-level quality estimate.",
+  "revision": "2026-09-02-bangladesh-v2",
+  "change_note": "Version 2 accepts the semantically equivalent phrase 'Pearl of the Sea' and removes ambiguity from Q3 by naming the two requested roles. Expected source facts did not change.",
+  "frozen_at": "2026-09-02",
+  "questions": [
+    {
+      "id": "Q1",
+      "case_id": "bangladesh.khagrachari.001",
+      "split": "targeted",
+      "severity": "high",
+      "failure_category": "unsupported_grounding",
+      "question": "According to the Bangladesh Tourist Hand Book, how far is Khagrachari from Chattogram, which three rivers pass through the district, and what is its main attraction?",
+      "input": {"question": "According to the Bangladesh Tourist Hand Book, how far is Khagrachari from Chattogram, which three rivers pass through the district, and what is its main attraction?"},
+      "expected_behavior": {"requirements": ["State the 112 km distance.", "Name Chengi, Kasalong, and Maini.", "Name Alutila mysterious cave as the main attraction.", "Cite bangladesh-tourist-handbook.pdf."]},
+      "forbidden_behavior": ["Invent a different distance or river.", "Present the brochure as current operational travel advice."],
+      "requires_document": "bangladesh-tourist-handbook.pdf",
+      "expected_facts": [
+        {"fact": "Khagrachari is 112 km from Chattogram", "match": ["112 km", "112km"]},
+        {"fact": "Chengi River", "match": ["chengi"]},
+        {"fact": "Kasalong River", "match": ["kasalong"]},
+        {"fact": "Maini River", "match": ["maini"]},
+        {"fact": "Alutila mysterious cave is the main attraction", "match": ["alutila"]}
+      ],
+      "source": {"type": "official_pdf", "publisher": "Bangladesh Tourism Board", "document": "bangladesh-tourist-handbook.pdf", "pdf_page": 38, "url": "https://objectstorage.ap-dcc-gazipur-1.oraclecloud15.com/n/axvjbnqprylg/b/V2Ministry/o/office-tourismboard/2024/12/39676297d79342e5aed6ba4a921f5930.pdf"},
+      "why_base_model_fails": "The distance, district rivers, and named attraction are source-specific details that should not be guessed from general model knowledge."
+    },
+    {
+      "id": "Q2",
+      "case_id": "bangladesh.saint-martin.002",
+      "split": "targeted",
+      "severity": "medium",
+      "failure_category": "unsupported_grounding",
+      "question": "According to the Bangladesh Tourist Hand Book, what is Saint Martin's Island's national status and nickname, and what happens to Cheera-Dwip during tides?",
+      "input": {"question": "According to the Bangladesh Tourist Hand Book, what is Saint Martin's Island's national status and nickname, and what happens to Cheera-Dwip during tides?"},
+      "expected_behavior": {"requirements": ["State that it is Bangladesh's only coral island.", "Give the nickname Pearl of Sea.", "State that Cheera-Dwip is part of the island but is divided during tides.", "Cite bangladesh-tourist-handbook.pdf."]},
+      "forbidden_behavior": ["Replace the brochure wording with unsupported current access advice."],
+      "requires_document": "bangladesh-tourist-handbook.pdf",
+      "expected_facts": [
+        {"fact": "Bangladesh's only coral island", "match": ["only coral island"]},
+        {"fact": "Nickname Pearl of Sea", "match": ["pearl of sea", "pearl of the sea"]},
+        {"fact": "Cheera-Dwip is part of Saint Martin's Island", "match": ["cheera-dwip", "cheera dwip"]},
+        {"fact": "Cheera-Dwip is divided during tides", "match": ["divided during tides", "separated during tides", "separated at high tide"]}
+      ],
+      "source": {"type": "official_pdf", "publisher": "Bangladesh Tourism Board", "document": "bangladesh-tourist-handbook.pdf", "pdf_page": 34, "url": "https://objectstorage.ap-dcc-gazipur-1.oraclecloud15.com/n/axvjbnqprylg/b/V2Ministry/o/office-tourismboard/2024/12/39676297d79342e5aed6ba4a921f5930.pdf"},
+      "why_base_model_fails": "A model may know the island generally but cannot prove the handbook's exact nickname and tide wording without retrieval."
+    },
+    {
+      "id": "Q3",
+      "case_id": "bangladesh.karamjal.003-v2",
+      "split": "targeted",
+      "severity": "high",
+      "failure_category": "unsupported_grounding",
+      "question": "According to the Sundarbans brochure, whose permission is needed before entering through Karamjal, what official station is Karamjal, and what kind of breeding center does it also serve as?",
+      "input": {"question": "According to the Sundarbans brochure, whose permission is needed before entering through Karamjal, what official station is Karamjal, and what kind of breeding center does it also serve as?"},
+      "expected_behavior": {"requirements": ["Name the local forest station as the permission source.", "State that Karamjal is a Forest Rangers station.", "State that it is also a deer-breeding center.", "Cite bangladesh-sundarbans.pdf."]},
+      "forbidden_behavior": ["Turn the brochure statement into current legal-entry advice without a freshness warning."],
+      "requires_document": "bangladesh-sundarbans.pdf",
+      "expected_facts": [
+        {"fact": "Permission from the local forest station", "match": ["local forest station"]},
+        {"fact": "Forest Rangers station", "match": ["forest rangers station", "forest ranger station"]},
+        {"fact": "Deer-breeding center", "match": ["deer-breeding center", "deer breeding center"]}
+      ],
+      "source": {"type": "official_pdf", "publisher": "Bangladesh Tourism Board", "document": "bangladesh-sundarbans.pdf", "pdf_page": 7, "url": "https://objectstorage.ap-dcc-gazipur-1.oraclecloud15.com/n/axvjbnqprylg/b/V2Ministry/o/office-tourismboard/2024/12/0f4bd765e38946ffacf52aef65005ee5.pdf"},
+      "why_base_model_fails": "The two operational functions and permission wording are brochure-specific evidence."
+    },
+    {
+      "id": "Q4",
+      "case_id": "bangladesh.kachikhali.004",
+      "split": "regression",
+      "severity": "medium",
+      "failure_category": "unsupported_grounding",
+      "question": "According to the Sundarbans brochure, which destination is about an 11-12 hour river journey from Khulna, what is its other name, and which forest range contains it?",
+      "input": {"question": "According to the Sundarbans brochure, which destination is about an 11-12 hour river journey from Khulna, what is its other name, and which forest range contains it?"},
+      "expected_behavior": {"requirements": ["Name Kachikhali.", "State the 11-12 hour river journey from Khulna.", "Give the other name Tiger Point.", "Name Sharonkhola Forest Range.", "Cite bangladesh-sundarbans.pdf."]},
+      "forbidden_behavior": ["Describe the travel time as a current schedule guarantee."],
+      "requires_document": "bangladesh-sundarbans.pdf",
+      "expected_facts": [
+        {"fact": "Kachikhali", "match": ["kachikhali"]},
+        {"fact": "11-12 hour river journey from Khulna", "match": ["11-12 hours", "11–12 hours", "11 to 12 hours", "11-12 hour"]},
+        {"fact": "Other name Tiger Point", "match": ["tiger point"]},
+        {"fact": "Sharonkhola Forest Range", "match": ["sharonkhola"]}
+      ],
+      "source": {"type": "official_pdf", "publisher": "Bangladesh Tourism Board", "document": "bangladesh-sundarbans.pdf", "pdf_page": 8, "url": "https://objectstorage.ap-dcc-gazipur-1.oraclecloud15.com/n/axvjbnqprylg/b/V2Ministry/o/office-tourismboard/2024/12/0f4bd765e38946ffacf52aef65005ee5.pdf"},
+      "why_base_model_fails": "The travel duration, alternate name, and exact forest range are a single source-bound tuple."
+    },
+    {
+      "id": "Q5",
+      "case_id": "bangladesh.world-heritage-day-5.005",
+      "split": "holdout",
+      "severity": "high",
+      "failure_category": "unsupported_grounding",
+      "question": "In the World Heritage Tour document, what travel time and distance are listed on day 5 for Khulna to Bagerhat and Bagerhat to Mongla, and which four Bagerhat heritage stops are named?",
+      "input": {"question": "In the World Heritage Tour document, what travel time and distance are listed on day 5 for Khulna to Bagerhat and Bagerhat to Mongla, and which four Bagerhat heritage stops are named?"},
+      "expected_behavior": {"requirements": ["State 45 minutes and 30 km to Bagerhat.", "State 1 hour and 52 km to Mongla.", "Name 60-domed Mosque, Tomb of Khan Jahan Ali, 9-domed Mosque, and Thakur's Pond.", "Cite bangladesh-world-heritage-tour.pdf."]},
+      "forbidden_behavior": ["Substitute a current live itinerary or schedule for the document's listed itinerary."],
+      "requires_document": "bangladesh-world-heritage-tour.pdf",
+      "expected_facts": [
+        {"fact": "45 minutes from Khulna to Bagerhat", "match": ["45 mins", "45 minutes", "45mins"]},
+        {"fact": "30 km from Khulna to Bagerhat", "match": ["30 km", "30km"]},
+        {"fact": "1 hour from Bagerhat to Mongla", "match": ["1 hour", "1 hr", "1 hrs"]},
+        {"fact": "52 km from Bagerhat to Mongla", "match": ["52 km", "52km"]},
+        {"fact": "60-domed Mosque", "match": ["60-domed mosque", "sixty-domed mosque", "60 domed mosque"]},
+        {"fact": "Tomb of Khan Jahan Ali", "match": ["tomb of khan jahan ali"]},
+        {"fact": "9-domed Mosque", "match": ["9-domed mosque", "nine-domed mosque", "9 domed mosque"]},
+        {"fact": "Thakur's Pond", "match": ["thakur's pond", "thakur pond", "thakur"]}
+      ],
+      "source": {"type": "official_pdf", "publisher": "Bangladesh Tourism Board", "document": "bangladesh-world-heritage-tour.pdf", "pdf_page": 1, "url": "https://objectstorage.ap-dcc-gazipur-1.oraclecloud15.com/n/axvjbnqprylg/b/V2Ministry/o/office-tourismboard/2024/12/283c346d7ee847abab6d3ac3ae53a485.pdf"},
+      "why_base_model_fails": "This exact day-level itinerary, distances, timings, and stop list are not safely inferable from general travel knowledge."
+    }
+  ]
+}

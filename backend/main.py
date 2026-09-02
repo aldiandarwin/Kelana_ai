@@ -1,7 +1,8 @@
-"""KelanaAI FastAPI application through Session 8.
+"""KelanaAI FastAPI application through Session 9.
 
 Sessions 2-7 provide trip rules, PostgreSQL persistence, Amazon Bedrock, and the
 dashboard. Session 8 adds JWT authentication and backend-owned trip ownership.
+Session 9 adds retrieval, so answers can cite a document instead of only the model.
 """
 
 import os
@@ -15,8 +16,10 @@ from sqlalchemy.orm import Session
 
 from database import Base, engine, get_db
 from dependencies.auth import get_current_user
+from models.knowledge import KnowledgeChunk  # noqa: F401 - registers the table in metadata
 from models.trip import Trip
 from models.user import User
+from schemas.assistant import AssistantRequest, AssistantResponse
 from schemas.auth import (
     CurrentUserResponse,
     LoginRequest,
@@ -38,11 +41,12 @@ from services.auth_service import (
     verify_password,
 )
 from services.bedrock_service import BedrockError, build_prompt, generate_itinerary
+from services.knowledge_service import KnowledgeBaseError, ask_knowledge_base
 from services.trip_service import calculate_daily_budget, get_trip_category
 
 load_dotenv()
 
-app = FastAPI(title="KelanaAI API", version="8.0")
+app = FastAPI(title="KelanaAI API", version="9.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -54,7 +58,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Importing both ORM models above registers both tables before create_all runs.
+# Importing every ORM model above registers its table before create_all runs.
+# knowledge_chunks is a new table in Session 9, so create_all is enough for it.
+# No migration script is needed, unlike Session 8 which altered an existing table.
 Base.metadata.create_all(bind=engine)
 
 
@@ -313,3 +319,22 @@ def generate_trip_recommendation(
         destination=trip.destination,
         recommendation=recommendation,
     )
+
+
+@app.post("/api/v1/assistant", response_model=AssistantResponse)
+def ask_assistant(
+    payload: AssistantRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AssistantResponse:
+    """Answer a travel question from the knowledge base, and name the source used."""
+
+    try:
+        result = ask_knowledge_base(db, payload.question)
+    except KnowledgeBaseError as error:
+        raise HTTPException(
+            status_code=502,
+            detail=f"The knowledge base could not answer that question: {error}",
+        ) from error
+
+    return AssistantResponse(question=payload.question, **result)
