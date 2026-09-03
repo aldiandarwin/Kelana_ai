@@ -5,6 +5,9 @@ reach Bedrock through the functions below, never through the AWS SDK directly.
 
 Session 9 adds embeddings and a second question-answering entry point here for
 the same reason, so that the retrieval layer stays free of AWS concerns.
+
+Session 10 adds structured multi-turn Converse messages. The application still
+owns memory; Bedrock receives only the history supplied for the current call.
 """
 
 import json
@@ -34,6 +37,13 @@ EMBEDDING_DIMENSIONS = 1024
 # built on first use, not at import, so the test suite never waits on a client
 # it does not need. Only the managed Knowledge Base path touches it.
 _agent_client = None
+
+CONVERSATION_SYSTEM_PROMPT = (
+    "You are KelanaAI, a practical travel-planning assistant. "
+    "Use the supplied conversation history to resolve follow-up references. "
+    "Do not claim to remember anything outside this conversation. "
+    "Answer clearly in Markdown and keep the response under 500 words."
+)
 
 
 class BedrockError(RuntimeError):
@@ -69,13 +79,14 @@ def build_prompt(
     )
 
 
-def _converse(
-    prompt: str,
+def _converse_messages(
+    messages: list[dict],
     *,
+    system_prompt: str | None = None,
     temperature: float | None = None,
     max_tokens: int | None = None,
 ) -> str:
-    """Send one prompt through the Converse API and return the generated text."""
+    """Send structured messages through Converse and return generated text."""
 
     inference_config = {}
     if temperature is not None:
@@ -87,13 +98,10 @@ def _converse(
         # content is a list of blocks, not a plain string
         request = {
             "modelId": os.getenv("MODEL_ID"),
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [{"text": prompt}],
-                }
-            ],
+            "messages": messages,
         }
+        if system_prompt:
+            request["system"] = [{"text": system_prompt}]
         if inference_config:
             request["inferenceConfig"] = inference_config
 
@@ -107,6 +115,21 @@ def _converse(
     return response["output"]["message"]["content"][0]["text"]
 
 
+def _converse(
+    prompt: str,
+    *,
+    temperature: float | None = None,
+    max_tokens: int | None = None,
+) -> str:
+    """Send one prompt through Converse while preserving older call sites."""
+
+    return _converse_messages(
+        [{"role": "user", "content": [{"text": prompt}]}],
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
+
+
 def generate_itinerary(prompt: str) -> str:
     """Send the prompt to Amazon Bedrock and return the generated itinerary."""
 
@@ -117,6 +140,28 @@ def generate_answer(prompt: str) -> str:
     """Session 9: deterministic settings make paired evaluations comparable."""
 
     return _converse(prompt, temperature=0.0, max_tokens=500)
+
+
+def generate_conversation_reply(history: list[dict[str, str]]) -> str:
+    """Session 10: answer with the user/assistant turns supplied by the app."""
+
+    messages: list[dict] = []
+    for turn in history:
+        role = turn.get("role")
+        content = turn.get("content", "").strip()
+        if role not in {"user", "assistant"} or not content:
+            raise BedrockError("Conversation history contains an invalid message")
+        messages.append({"role": role, "content": [{"text": content}]})
+
+    if not messages or messages[-1]["role"] != "user":
+        raise BedrockError("Conversation history must end with a user message")
+
+    return _converse_messages(
+        messages,
+        system_prompt=CONVERSATION_SYSTEM_PROMPT,
+        temperature=0.2,
+        max_tokens=700,
+    )
 
 
 def embed_text(text: str) -> list[float]:

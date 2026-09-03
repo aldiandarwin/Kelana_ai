@@ -15,7 +15,7 @@ def _utc_now() -> datetime:
 
 
 class User(Base):
-    """One account that owns zero or more trips."""
+    """One account that owns private trips and conversation history."""
 
     __tablename__ = "users"
 
@@ -26,3 +26,9 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utc_now)
 
     trips = relationship("Trip", back_populates="owner")
+    conversations = relationship(
+        "Conversation",
+        back_populates="owner",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

@@ -9,6 +9,8 @@ classifying a budget. Session 6 adds the responsive homepage, Session 7 turns th
 frontend into a multi-page trip dashboard, and Session 8 makes every trip private
 to one authenticated user. Session 9 adds retrieval, so KelanaAI can answer a
 factual travel question from trusted documents and name the document it used.
+Session 10 adds private conversation history, so a follow-up question can reuse
+the earlier turns in the selected chat after a reload.
 
 ## Session 3 - REST API with FastAPI
 
@@ -254,6 +256,62 @@ retrieved the required source in every case; the base model stated 2 of 24.
 The submission-ready analysis is rendered as
 `output/pdf/session-09-bangladesh-rag-vs-base.pdf`.
 
+## Session 10 - Conversation History and Multi-Turn Context
+
+Session 10 stores chat history in two related tables. A conversation belongs to
+one authenticated user, and every user or assistant turn belongs to that
+conversation.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/v1/conversations` | Create a private conversation |
+| `GET` | `/api/v1/conversations` | List the current user's conversations |
+| `GET` | `/api/v1/conversations/{id}/messages` | Reload one owned conversation and its ordered messages |
+| `POST` | `/api/v1/conversations/{id}/messages` | Save a turn, rebuild history, call Bedrock, and save the reply |
+| `PATCH` | `/api/v1/conversations/{id}` | Rename an owned conversation |
+
+The frontend route `/chat` includes the homework and challenge behavior: a
+conversation sidebar, click-to-reload, automatic appearance of new chats,
+editable titles, message timestamps, a typing indicator, and auto-scroll.
+
+The app, rather than Bedrock, owns memory. On every message, FastAPI loads all
+ordered turns from PostgreSQL and sends them as structured Converse messages.
+The user message and assistant answer commit atomically; if Bedrock fails, the
+transaction rolls back so the history cannot contain a misleading orphan turn.
+
+Chat history is private account data. The browser holds the JWT only in the
+existing HttpOnly cookie, Next.js attaches it server-side, and FastAPI applies
+the same `404`/`403` ownership boundary used by private trips. The conversation
+content is sent to Amazon Bedrock in `ap-southeast-2` only to answer the current
+turn. Passwords, JWTs, API keys, and other credentials are never included.
+
+### Upgrade an existing Session 9 database
+
+Run the idempotent migration once from `backend/`:
+
+```powershell
+..\.venv\Scripts\python.exe migrate_session_10.py
+```
+
+It creates `conversations` and `messages` with their foreign keys and indexes.
+It does not alter or delete users, trips, knowledge chunks, or earlier evidence.
+
+### Live multi-turn smoke test
+
+After local AWS configuration is available, run this from `backend/`:
+
+```powershell
+..\.venv\Scripts\python.exe smoke_session_10.py
+```
+
+The script uses an isolated in-memory database and two non-sensitive sample
+turns. It passes only when four messages persist in role order and the second,
+context-dependent Bedrock answer identifies the city assigned in the first turn.
+
+The lesson deliberately keeps full history for clarity. Long production threads
+will eventually need a token budget, recent-turn window, or summary strategy.
+Session 10 does not claim that later optimization is implemented.
+
 ## Architecture
 
 ```text
@@ -267,6 +325,8 @@ backend/main.py           FastAPI web and validation layer
           |
           +---> backend/schemas/trip.py    request and response shapes
           +---> backend/schemas/auth.py    auth and profile shapes
+          +---> backend/schemas/conversation.py
+          |                       conversation and message API shapes
           +---> backend/dependencies/auth.py
           |                       Bearer JWT -> current User
           |
@@ -281,11 +341,14 @@ backend/main.py           FastAPI web and validation layer
           |
           +---> backend/services/knowledge_service.py
           |                       Chunk, rank, and ground the answer
+          +---> backend/services/conversation_service.py
+          |                       Ordered history and atomic turn persistence
           |
           v
 backend/models/trip.py      Trip ORM model
 backend/models/user.py      User ORM model; one user owns many trips
 backend/models/knowledge.py KnowledgeChunk ORM model; one retrievable passage
+backend/models/conversation.py Conversation and Message; private multi-turn history
           |
           v
 backend/database.py       engine, SessionLocal, Base
@@ -301,6 +364,8 @@ backend/database.py       engine, SessionLocal, Base
 - `backend/services/bedrock_service.py` is the only module that talks to AWS.
 - `backend/services/knowledge_service.py` owns chunking, ranking, and grounding,
   and deliberately imports no boto3 so that rule stays true.
+- `backend/services/conversation_service.py` reconstructs ordered context and
+  commits each user/assistant turn as one transaction.
 - `backend/services/auth_service.py` owns bcrypt hashing and JWT verification.
 - `backend/models/trip.py` maps the `Trip` class onto the `trips` table.
 - `knowledge/` holds the source documents, committed so answers can be checked
@@ -519,6 +584,11 @@ endpoint tests patch the Bedrock entry points with `unittest.mock`, which is the
 first use of patching in this repository. It is here because Session 9 is the
 first feature whose happy path cannot be reached without an AWS call.
 
+Session 10 adds integration tests for authenticated creation/listing, ownership,
+ordered reload, two-turn context reconstruction, timestamps, renaming, request
+validation, and transaction rollback. `smoke_session_10.py` is the separate,
+explicit live Bedrock check; the automated suite never calls AWS.
+
 ## Working Directory
 
 The repository uses two working directories, and mixing them is the most common
@@ -543,3 +613,5 @@ failure here.
   tag `session-8`
 - Session 9 target: commit `Expand Knowledge Base and compare RAG vs base-model answers`
   and tag `session-9`
+- Session 10 target: commit `Add conversational memory and improve chat experience`
+  and tag `session-10`

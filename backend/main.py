@@ -1,8 +1,9 @@
-"""KelanaAI FastAPI application through Session 9.
+"""KelanaAI FastAPI application through Session 10.
 
 Sessions 2-7 provide trip rules, PostgreSQL persistence, Amazon Bedrock, and the
 dashboard. Session 8 adds JWT authentication and backend-owned trip ownership.
 Session 9 adds retrieval, so answers can cite a document instead of only the model.
+Session 10 persists private conversations and reconstructs multi-turn context.
 """
 
 import os
@@ -16,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from database import Base, engine, get_db
 from dependencies.auth import get_current_user
+from models.conversation import Conversation, Message  # noqa: F401
 from models.knowledge import KnowledgeChunk  # noqa: F401 - registers the table in metadata
 from models.trip import Trip
 from models.user import User
@@ -26,6 +28,15 @@ from schemas.auth import (
     RegisterRequest,
     TokenResponse,
     UserResponse,
+)
+from schemas.conversation import (
+    ConversationCreateRequest,
+    ConversationCreateResponse,
+    ConversationDetail,
+    ConversationRenameRequest,
+    ConversationSummary,
+    ConversationTurnResponse,
+    MessageCreateRequest,
 )
 from schemas.trip import (
     TripGenerateResponse,
@@ -41,12 +52,18 @@ from services.auth_service import (
     verify_password,
 )
 from services.bedrock_service import BedrockError, build_prompt, generate_itinerary
+from services.conversation_service import (
+    ConversationServiceError,
+    DEFAULT_CONVERSATION_TITLE,
+    list_messages,
+    send_message,
+)
 from services.knowledge_service import KnowledgeBaseError, ask_knowledge_base
 from services.trip_service import calculate_daily_budget, get_trip_category
 
 load_dotenv()
 
-app = FastAPI(title="KelanaAI API", version="9.0")
+app = FastAPI(title="KelanaAI API", version="10.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -59,8 +76,8 @@ app.add_middleware(
 )
 
 # Importing every ORM model above registers its table before create_all runs.
-# knowledge_chunks is a new table in Session 9, so create_all is enough for it.
-# No migration script is needed, unlike Session 8 which altered an existing table.
+# Sessions 9 and 10 add new tables, so create_all can safely create them. The
+# explicit Session 10 migration remains available as an observable class step.
 Base.metadata.create_all(bind=engine)
 
 
@@ -90,6 +107,26 @@ def _trip_for_owner(db: Session, trip_id: int, user: User) -> Trip:
             detail="You do not have permission to access this trip",
         )
     return trip
+
+
+def _conversation_for_owner(
+    db: Session,
+    conversation_id: int,
+    user: User,
+) -> Conversation:
+    """Load a conversation and enforce the same 404/403 ownership boundary."""
+
+    conversation = (
+        db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    )
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    if conversation.user_id != user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to access this conversation",
+        )
+    return conversation
 
 
 @app.get("/")
@@ -338,3 +375,115 @@ def ask_assistant(
         ) from error
 
     return AssistantResponse(question=payload.question, **result)
+
+
+@app.post(
+    "/api/v1/conversations",
+    response_model=ConversationCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_conversation(
+    request: ConversationCreateRequest | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ConversationCreateResponse:
+    """Create an empty private conversation for the authenticated user."""
+
+    conversation = Conversation(
+        user_id=user.id,
+        title=request.title if request else DEFAULT_CONVERSATION_TITLE,
+    )
+    db.add(conversation)
+    db.commit()
+    db.refresh(conversation)
+    return ConversationCreateResponse(conversation_id=conversation.id)
+
+
+@app.get(
+    "/api/v1/conversations",
+    response_model=list[ConversationSummary],
+)
+def list_conversations(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[Conversation]:
+    """List only the authenticated user's conversations, newest first."""
+
+    return (
+        db.query(Conversation)
+        .filter(Conversation.user_id == user.id)
+        .order_by(Conversation.created_at.desc(), Conversation.id.desc())
+        .all()
+    )
+
+
+@app.get(
+    "/api/v1/conversations/{conversation_id}/messages",
+    response_model=ConversationDetail,
+)
+def get_conversation_messages(
+    conversation_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ConversationDetail:
+    """Reload one owned conversation and every persisted message."""
+
+    conversation = _conversation_for_owner(db, conversation_id, user)
+    return ConversationDetail(
+        id=conversation.id,
+        title=conversation.title,
+        created_at=conversation.created_at,
+        messages=list_messages(db, conversation.id),
+    )
+
+
+@app.post(
+    "/api/v1/conversations/{conversation_id}/messages",
+    response_model=ConversationTurnResponse,
+)
+def send_conversation_message(
+    conversation_id: int,
+    request: MessageCreateRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ConversationTurnResponse:
+    """Persist one turn, rebuild context, call Bedrock, and save its reply."""
+
+    conversation = _conversation_for_owner(db, conversation_id, user)
+    try:
+        user_message, assistant_message = send_message(
+            db,
+            conversation,
+            request.content,
+        )
+    except ConversationServiceError as error:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Amazon Bedrock could not continue the conversation: {error}",
+        ) from error
+
+    return ConversationTurnResponse(
+        conversation_id=conversation.id,
+        title=conversation.title,
+        user_message=user_message,
+        assistant_message=assistant_message,
+    )
+
+
+@app.patch(
+    "/api/v1/conversations/{conversation_id}",
+    response_model=ConversationSummary,
+)
+def rename_conversation(
+    conversation_id: int,
+    request: ConversationRenameRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Conversation:
+    """Rename an owned conversation for the Session 10 challenge bonus."""
+
+    conversation = _conversation_for_owner(db, conversation_id, user)
+    conversation.title = request.title
+    db.commit()
+    db.refresh(conversation)
+    return conversation
