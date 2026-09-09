@@ -109,6 +109,39 @@ class DeploymentConfigTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("DATABASE_URL is not set", result.stderr)
 
+    def test_cli_package_import_without_implicit_working_directory(self) -> None:
+        script = textwrap.dedent("""
+            import sys
+            from pathlib import Path
+            from fastapi_cli.discover import get_import_data
+            from fastapi.testclient import TestClient
+            from importlib import import_module
+
+            original_directory = Path.cwd()
+            discovered = get_import_data(path=Path(sys.argv[1]))
+            assert discovered.import_string == "backend.main:app", discovered
+            assert Path.cwd() == original_directory
+            app = getattr(import_module(discovered.module_data.module_import_str), discovered.app_name)
+            with TestClient(app) as client:
+                assert client.get("/health").json() == {"status": "OK"}
+                assert client.get("/api/v1/conversations").status_code == 401
+            from database import engine
+            assert engine.dialect.name == "sqlite"
+        """)
+        for working_directory, entrypoint in (
+            (BACKEND_ROOT, "main.py"),
+            (REPO_ROOT, "backend/main.py"),
+        ):
+            with self.subTest(working_directory=working_directory):
+                # Unlike python -c/-m, a console-script launch does not implicitly
+                # place its working directory on sys.path. -P reproduces that.
+                result = subprocess.run(
+                    [sys.executable, "-P", "-B", "-c", script, entrypoint],
+                    cwd=working_directory, env=self.isolated_environment(),
+                    capture_output=True, text=True, timeout=45,
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_postgresql_pool_checks_stale_connections_and_bounds_connect_time(self) -> None:
         environment = self.isolated_environment()
         environment["DATABASE_URL"] = (

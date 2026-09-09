@@ -26,6 +26,7 @@ a claim that any public deployment is healthy.
 - `backend/requirements.txt` is the canonical manifest; root requirements forwards to it.
 - Python is pinned to `3.13` in the application directory; `fastapi[standard]` supplies the CLI.
 - Full-checkout CLI discovery resolves `backend.main:app`; explicit Uvicorn from `backend/` uses `main:app`.
+- The package initializer makes flat backend imports available to CLI console scripts without relying on an implicit current-directory import path. Keep the safe-path regression test when changing this startup code.
 - Commit/push only after Aldian approves the scoped files and commit message.
 - Existing Session 8/9/10 tags are historical checkpoints: never move them for this deployment.
 
@@ -77,6 +78,12 @@ packaging gaps have been repaired, but the exact provider failure is not proven.
 If it repeats on the new commit with Python 3.13 selected, retain the deployment
 ID, commit hash and full build details for FastAPI Cloud support. Do not randomly
 change the Neon password or use CDN `Purge Cache` as a Python build fix.
+
+The preparation commit `08ba4b9` passed the image-build stage, then hit a separate
+startup error: `ModuleNotFoundError: No module named 'database'`. It was reproduced
+locally with Python safe-path mode and fixed in the package initializer. The
+follow-up requires its own approved commit/push and cloud readiness verification;
+do not report the initial build-stage fix as full deployment success.
 
 ## 3. Populate the production knowledge base
 

@@ -510,6 +510,12 @@ The explicit Uvicorn command from `backend/` remains `main:app`. Both load the
 same application source; do not remove package files just to change the displayed
 import string. The deployment test exercises the CLI's discovered application.
 
+`backend/__init__.py` explicitly adds its own directory to Python's module search
+path when loaded as a package. This preserves the course's flat imports in cloud
+console-script launches, where the current directory is not implicitly on
+`sys.path`. Tests cover both repository-root and backend-directory launches with
+Python safe-path mode; no working-directory change or `PYTHONPATH` override is needed.
+
 Before starting the cloud app, configure its Environment Variables from the
 names in `.env.example`. In particular, `DATABASE_URL` must be the Neon connection
 string with the SSL parameters supplied by Neon. Set a valid Bedrock credential,

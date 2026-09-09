@@ -10,11 +10,12 @@ Neon/Bedrock production integration test.
 Verification date: **9 September 2026 (WIB)**.
 Repository: `https://github.com/aldiandarwin/Kelana_ai`.
 Starting commit: `f932a8a16e914be73528ed2978b5b2730f5cdf07`.
-The pre-publication remote check found `main` and `session-10` at that same commit;
-`session-11` did not exist. Aldian approved the 21-file preparation checkpoint with
-message `Prepare KelanaAI for cloud deployment`. This document records the checks
-before that commit; use Git history and the provider's deployed commit for the
-subsequent publication/build result.
+The approved 21-file preparation checkpoint was committed and pushed as
+`08ba4b9dc934f4afb62648ae23ef9205630d5c03`, message
+`Prepare KelanaAI for cloud deployment`. Fetch confirmed local HEAD and
+`origin/main` match (0 ahead / 0 behind), and `session-10` remains at the starting
+commit. `session-11` has not been created. The startup compatibility follow-up
+described below is tested locally but not yet published.
 
 ## Acceptance matrix
 
@@ -24,7 +25,7 @@ subsequent publication/build result.
 | Backend dependency manifest | Verified locally | Self-contained pinned `backend/requirements.txt`; root forwards to it |
 | Python version and CLI discovery | Verified locally | Python 3.13, actual FastAPI CLI discovers `backend.main:app` from a full checkout |
 | Fresh dependency installation | Passed | New isolated virtualenv installed canonical manifest; `pip check` reported no broken requirements |
-| Backend regression tests | Passed: 49/49 | SQLite-isolated tests, no real AWS calls or production DB writes |
+| Backend regression tests | Passed: 50/50 (follow-up local) | Original preparation had 49 tests; the added safe-path test covers both root and backend-directory CLI startup |
 | PostgreSQL idle connection configuration | Unit verified | `pool_pre_ping=True` and `connect_timeout=10`; no live Neon connectivity claim |
 | Custom application icon | Verified locally | Existing `/icon.svg` returns HTTP 200 |
 | Public About page | Verified locally | `/about` returns 200; author, features, architecture and AI/privacy caveats visible without login |
@@ -36,7 +37,7 @@ subsequent publication/build result.
 | Production frontend build | Passed locally | Next.js 16.3.2 production build and TypeScript succeeded |
 | Authentication boundary | Verified locally | `/trips` and `/chat` return 307 without a cookie; API conversations returns 401; browser trip navigation goes to login |
 | Deployment instructions | Written | `docs/session-11-deployment.md` plus README links |
-| FastAPI Cloud new build and startup | Pending | Login verified; environment correction saved; approved code publication will trigger the next build |
+| FastAPI Cloud new build and startup | Build passed; startup blocked | Commit `08ba4b9` reached readiness checks, then failed package imports; local follow-up fixed and tested, not published |
 | Neon connection and schema | Partially verified | Console query succeeded for `kelanaai-db`; no base tables in `public` at inspection time; app persistence/RAG remain unverified |
 | Vercel public end-to-end flow | Pending | Public frontend URL/env/deployed commit not yet verified |
 | Actual phone and classmate beta test | Pending human validation | Browser resizing is not a substitute for a classmate's real feedback |
@@ -84,10 +85,36 @@ Known: the supplied build log fails near Python installation with
 The repository previously lacked a dependency manifest and Python version pin
 inside the configured backend directory. Those packaging gaps are now addressed.
 
-Unknown: whether the provider's next image build succeeds. This is not evidence
-that Neon credentials were wrong, nor proof that packaging was the only cause.
-Docker's Linux engine was unavailable locally, so the provider's Linux build
-has not been reproduced.
+The next cloud deployment, `b9d0b7d2-64a1-44d5-8cea-1a52a5cb26a2`, built commit
+`08ba4b9` and reached Verifying Readiness. Runtime logs then identified a separate
+startup failure in `/app/backend/main.py:18`: `ModuleNotFoundError: No module named
+'database'`. The runtime installed Python 3.13.15 on Linux; the early interpreter
+installation error did not recur on this attempt. The public `/health` probe
+still returned 404, so the backend was not serving traffic.
+
+### Startup compatibility follow-up
+
+The initial local test used `python -c` from `backend/`, which implicitly exposes
+the working directory on `sys.path`. FastAPI's console entrypoint discovers
+`backend.main:app` and adds its package parent, but cannot rely on that implicit
+backend path. The exact missing-database error was reproduced locally with `-P`
+from both `backend/` and repository root, before applying the fix.
+
+`backend/__init__.py` now adds its absolute directory once when loaded as a package.
+This is a compatibility shim for the existing flat course imports, not a broad
+package refactor. It leaves the working directory, local CLI commands, credentials,
+schemas and route behavior unchanged.
+
+After the fix: all 50 backend tests passed in 14.161 seconds, including both safe-
+path startup cases. A separate smoke test launched the actual installed
+`fastapi.exe run main.py` console executable on a temporary localhost port: health
+returned 200 and anonymous conversations returned 401. It used in-memory SQLite
+and dummy credentials; the temporary server was stopped afterward. No real
+Bedrock request or Neon write was performed by these tests.
+
+The follow-up still needs approved publication and a new cloud readiness check.
+Docker's Linux engine was unavailable locally; Windows test success is not a
+claim that the updated Linux runtime has already passed.
 
 ## Security and remaining external gates
 
@@ -115,7 +142,7 @@ has not been reproduced.
 - An AST index refresh (`graphify update .`) was blocked by the execution safety
   reviewer over possible external code transmission. It was not bypassed; graph
   freshness is unverified and is not needed to claim the test results above.
-- Before release: publish the approved preparation checkpoint, build the new commit, verify
+- Before release: approve/publish the startup follow-up, verify the new runtime and
   Neon/Bedrock, ingest the public reference documents into the confirmed target,
   deploy Vercel and complete the public acceptance checklist.
 
