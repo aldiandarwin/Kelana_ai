@@ -82,8 +82,9 @@ change the Neon password or use CDN `Purge Cache` as a Python build fix.
 The preparation commit `08ba4b9` passed the image-build stage, then hit a separate
 startup error: `ModuleNotFoundError: No module named 'database'`. It was reproduced
 locally with Python safe-path mode and fixed in the package initializer. The
-follow-up requires its own approved commit/push and cloud readiness verification;
-do not report the initial build-stage fix as full deployment success.
+follow-up was approved and published as `bf3719f`, and its FastAPI Cloud deployment
+reached Ready/Live on 9 September 2026. Public health returned 200. Keep the
+safe-path regression tests: the initial build-stage fix alone was insufficient.
 
 ## 3. Populate the production knowledge base
 
@@ -135,6 +136,19 @@ The JWT cookie remains HttpOnly, Secure in production, and SameSite=Lax. Since
 browser traffic goes to the same-origin Next.js proxy, do not change it to
 SameSite=None or weaken authentication to make the two hosts work together.
 Never leave production `API_URL` pointing to localhost.
+
+Verified production URLs on 9 September 2026:
+- Frontend: `https://kelana-ai-gold.vercel.app`
+- Backend: `https://kelana-ai-92865e66.fastapicloud.dev`
+- Both deployments: `bf3719f262b3cc710d58bc6c34c764c296394fc5`
+
+The approved `FRONTEND_URL=https://kelana-ai-gold.vercel.app` change was saved
+with Save and Redeploy on 9 September 2026 (around 20:27 WIB). Environment-change
+deployment `b0fa6c9e-aa41-4ceb-9598-afc3490a46b2` reached Ready/Live on `bf3719f`.
+The production-origin OPTIONS request now returns 200 with that exact allowed
+origin; an unrelated origin still returns 400. Backend health/Swagger and public
+About return 200, while anonymous frontend conversations remain 401. No wildcard
+origin or weaker cookie/authentication settings were introduced.
 
 ## 5. Public acceptance gates
 

@@ -14,7 +14,12 @@ the earlier turns in the selected chat after a reload.
 
 Session 11 adds cloud-ready backend packaging, idle-connection checks for Neon,
 public About/404 pages, accessible route loading, and recoverable error screens.
-Cloud deployment is not yet verified; see the current evidence before recording.
+Vercel and FastAPI Cloud are live with Neon persistence and Bedrock/RAG smoke
+checks passing. The production frontend origin is configured and CORS verified.
+Human rehearsal and submission gates remain; see the current evidence before recording.
+
+- [Public KelanaAI application](https://kelana-ai-gold.vercel.app)
+- [Public backend health](https://kelana-ai-92865e66.fastapicloud.dev/health)
 
 - [Production deployment runbook](docs/session-11-deployment.md)
 - [Session 11 verification and remaining gates](evidence/session-11.md)

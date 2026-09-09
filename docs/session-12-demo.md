@@ -6,8 +6,14 @@ Rekam bukti bahwa KelanaAI berjalan di URL publik, bukan hanya menampilkan kode
 atau localhost. Video baru siap dikumpulkan setelah bisa diputar oleh penilai
 melalui link Google Drive tanpa meminta akses.
 
-**Status sekarang: panduan siap; deployment publik, video, link Drive, dan
-pengumpulan LMS belum terverifikasi.**
+**Status 9 September 2026: frontend/backend publik aktif; 27 pemeriksaan integrasi
+dan 5 kasus RAG lulus. Konfigurasi CORS final sudah aktif dan terverifikasi;
+rehearsal UI masih perlu dituntaskan. Video, link Drive, dan pengumpulan LMS
+belum terverifikasi.**
+
+Buka [KelanaAI production](https://kelana-ai-gold.vercel.app). Buat akun demo kamu
+di production; akun lokal tidak dipindahkan. Akun otomatis berlabel Session 11 QA
+bukan akun pribadi untuk rekaman. Gunakan budget sesuai label **USD**, bukan rupiah.
 
 ## Sumber dan batas tugas
 
@@ -91,9 +97,10 @@ Status "video diupload" belum sama dengan "sudah terkumpul".
 
 ## Isian bukti setelah benar-benar selesai
 
-- URL frontend publik: **pending**
-- URL backend publik: **pending**
-- Commit/tag deployment terverifikasi: **pending**
+- URL frontend publik: **https://kelana-ai-gold.vercel.app**
+- URL backend publik: **https://kelana-ai-92865e66.fastapicloud.dev**
+- Commit deployment terverifikasi: **bf3719f262b3cc710d58bc6c34c764c296394fc5**
+- Tag `session-11`: **pending release approval and remaining checks**
 - Hasil rehearsal dan tanggal: **pending**
 - Link video Google Drive: **pending**
 - Uji akses tanpa login: **pending**

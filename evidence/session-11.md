@@ -1,11 +1,14 @@
-# Session 11 Evidence - Deployment Preparation
+# Session 11 Evidence - Public Deployment Verification
 
 ## So What?
 
-The repository now contains the missing backend build inputs and Session 11 UX
-polish. **Local checks pass; public deployment and Session 12 submission are not
-complete.** Do not present these checks as a successful FastAPI Cloud build or a
-Neon/Bedrock production integration test.
+**Vercel and FastAPI Cloud are live on the same commit.** Neon persistence,
+Bedrock generation, conversational memory and document retrieval have now been
+exercised through the public Next.js proxy: 27 integration checks passed, followed
+by 5/5 frozen Bangladesh cases (24/24 expected strings, correct source in each).
+Final CORS configuration is now applied and verified. Authenticated browser
+rehearsal, actual-phone/classmate validation and Session 12 video/submission
+are still incomplete.
 
 Verification date: **9 September 2026 (WIB)**.
 Repository: `https://github.com/aldiandarwin/Kelana_ai`.
@@ -14,8 +17,10 @@ The approved 21-file preparation checkpoint was committed and pushed as
 `08ba4b9dc934f4afb62648ae23ef9205630d5c03`, message
 `Prepare KelanaAI for cloud deployment`. Fetch confirmed local HEAD and
 `origin/main` match (0 ahead / 0 behind), and `session-10` remains at the starting
-commit. `session-11` has not been created. The startup compatibility follow-up
-described below is tested locally but not yet published.
+commit. The approved five-file startup follow-up was then committed and pushed as
+`bf3719f262b3cc710d58bc6c34c764c296394fc5`, message
+`Fix backend imports for FastAPI Cloud startup`. Fetch verified HEAD equals
+`origin/main`, divergence 0/0. `session-11` has not been created.
 
 ## Acceptance matrix
 
@@ -26,7 +31,7 @@ described below is tested locally but not yet published.
 | Python version and CLI discovery | Verified locally | Python 3.13, actual FastAPI CLI discovers `backend.main:app` from a full checkout |
 | Fresh dependency installation | Passed | New isolated virtualenv installed canonical manifest; `pip check` reported no broken requirements |
 | Backend regression tests | Passed: 50/50 (follow-up local) | Original preparation had 49 tests; the added safe-path test covers both root and backend-directory CLI startup |
-| PostgreSQL idle connection configuration | Unit verified | `pool_pre_ping=True` and `connect_timeout=10`; no live Neon connectivity claim |
+| PostgreSQL idle connection configuration | Unit verified; Neon live queries passed | `pool_pre_ping=True` and `connect_timeout=10`; a long-idle production recovery scenario was not induced |
 | Custom application icon | Verified locally | Existing `/icon.svg` returns HTTP 200 |
 | Public About page | Verified locally | `/about` returns 200; author, features, architecture and AI/privacy caveats visible without login |
 | Better 404 page | Verified locally | Unknown public path returns 404 and stays on the recovery page without an auth redirect |
@@ -35,13 +40,15 @@ described below is tested locally but not yet published.
 | Responsive new pages | Browser verified locally | About and 404 reviewed at default desktop and 390x844 viewport; mobile client/scroll widths both 375px (scrollbar excluded), no horizontal overflow |
 | Frontend regression checks | Passed: 7/7 + lint | Built-in Node tests run real TS/TSX leaf components with framework navigation stubs |
 | Production frontend build | Passed locally | Next.js 16.3.2 production build and TypeScript succeeded |
-| Authentication boundary | Verified locally | `/trips` and `/chat` return 307 without a cookie; API conversations returns 401; browser trip navigation goes to login |
+| Authentication boundary | Verified locally and through public proxy | Login/logout, secure HttpOnly SameSite=Lax cookie, anonymous 401 and cross-owner trip/conversation 403 passed |
 | Deployment instructions | Written | `docs/session-11-deployment.md` plus README links |
-| FastAPI Cloud new build and startup | Build passed; startup blocked | Commit `08ba4b9` reached readiness checks, then failed package imports; local follow-up fixed and tested, not published |
-| Neon connection and schema | Partially verified | Console query succeeded for `kelanaai-db`; no base tables in `public` at inspection time; app persistence/RAG remain unverified |
-| Vercel public end-to-end flow | Pending | Public frontend URL/env/deployed commit not yet verified |
+| FastAPI Cloud new build and startup | Ready / Live | Follow-up `bf3719f`; public health 200, Swagger 200, anonymous conversations 401 |
+| Neon connection and schema | Verified | Five tables created; production trip/message persistence; 11 documents, 127 chunks and 127 embeddings |
+| Vercel public integration | Passed: 27/27 | Real HTTP requests through Vercel proxy; not a substitute for all authenticated browser UX checks |
+| Bangladesh RAG replay | Passed: 5/5 sampled cases | 24/24 fixture facts and required sources; see `session-11-public-rag.json`; not a general quality guarantee |
+| Backend frontend-origin configuration | Applied and verified | Approved FRONTEND_URL; deployment b0fa6c9e Ready/Live; Vercel preflight 200, unrelated origin 400 |
 | Actual phone and classmate beta test | Pending human validation | Browser resizing is not a substitute for a classmate's real feedback |
-| Session 11 commit/tag | Pending approval and release checks | Do not move Session 10 tag |
+| Verification evidence publication / Session 11 tag | Evidence commit/push approved; tag pending release checks | Publication message: Verify production deployment and RAG integration; do not move Session 10 tag |
 | Session 12 video, Drive access and LMS submission | Pending | Demo script exists; no recording or submission evidence yet |
 
 ## Reproducible local checks
@@ -112,9 +119,112 @@ returned 200 and anonymous conversations returned 401. It used in-memory SQLite
 and dummy credentials; the temporary server was stopped afterward. No real
 Bedrock request or Neon write was performed by these tests.
 
-The follow-up still needs approved publication and a new cloud readiness check.
-Docker's Linux engine was unavailable locally; Windows test success is not a
-claim that the updated Linux runtime has already passed.
+The approved follow-up is now published and passed cloud readiness. Docker's
+Linux engine was unavailable locally; the provider's actual Linux deployment,
+not the Windows unit tests alone, supplies the cloud startup evidence below.
+
+## Public deployment and integration proof
+
+- FastAPI Cloud deployment: `59fc52c7-6f8e-4a12-b3fb-1bc28648f244`, Ready and Live.
+- Backend: `https://kelana-ai-92865e66.fastapicloud.dev`.
+- Vercel deployment: `5m8h6XWJxdfJjJi2HGUeGpWZwJWC`, Ready, production.
+- Frontend: `https://kelana-ai-gold.vercel.app`.
+- Both dashboards show commit `bf3719f262b3cc710d58bc6c34c764c296394fc5`.
+- Vercel uses Next.js, root `frontend`, server-side `API_URL` pointing to the
+  actual FastAPI Cloud `/api/v1`. No backend credentials were copied to Vercel.
+
+Neon console and a direct read-only query confirmed `kelanaai-db` on production.
+Startup created `users`, `trips`, `knowledge_chunks`, `conversations`, `messages`.
+An explicit zero-row guard preceded ingestion. The existing script loaded the
+repository's 11 guides/course fixtures with Titan embeddings. A fresh query
+confirmed 11 distinct documents / 127 chunks / 127 non-null embeddings. No local
+users, trips, or conversations were transferred, and `.env` was not changed.
+
+HTTP integration run `20260909T083050` used two synthetic QA accounts, trip 1 and
+conversation 1. All 27 checks passed:
+
+| Checks | Observed |
+|---|---|
+| Public About / unknown page / icon / anonymous conversations | 200 / 404 / 200 / 401 |
+| Two accounts: register and login | 201 / 200 for each |
+| Auth cookie and profile | Secure, HttpOnly, SameSite=Lax; profile 200 |
+| Invalid trip with zero days | 422 |
+| Save trip, generate real Bedrock itinerary, reload saved result | 200; recommendation persisted |
+| Create chat and two real Bedrock turns | 201 then 200 / 200 |
+| Reload chat | 200; four messages with creation timestamps |
+| RAG API and source-bearing response | 200; grounded true with sources |
+| Second account reading first account's trip and conversation | 403 / 403 |
+| Logout, anonymous access, relogin, load history | 200 / 401 / 200 / 200 |
+
+Memory input: `Saya ingin ke Bangladesh selama 3 hari. Saya vegetarian dan tidak
+makan ikan. Ingat preferensi ini untuk perjalanan ini.` The follow-up asked for
+the earlier food preference and duration. The actual reply retained `Vegetarian`,
+`Tidak makan ikan`, and `3 hari`. This verifies this conversation, not memory across
+different conversations or RAG inside Chat.
+
+Browser inspection separately confirmed the public About and custom 404 pages.
+About was visually checked at desktop and 390x844: client/scroll width both 375px
+(excluding scrollbar), with no horizontal overflow. Authenticated chat scrolling,
+typing animation and title interactions still need a production browser rehearsal.
+
+### AI quality boundary and frozen replay
+
+The initial ad-hoc RAG probe asked which "two heritage areas" the World Heritage
+Tour combines. Its reply was: `The World Heritage Tour takes 12 nights and 13 days.
+It combines the heritage areas of Dhaka and Paharpur.` The supplied excerpt supports
+the duration and lists multiple places; it does not establish that two-area claim.
+This is an unsupported assertion, despite `grounded=true`. The question also had
+an unverified premise. Preserve this exploratory finding; it is not a golden case.
+
+The first itinerary test deliberately served integration, not realistic planning:
+its submitted budget was 5,000,000 **USD**. Its generated summary also multiplied
+1,900 by three after listing three different day budgets. Do not present that
+output as verified travel advice or a passed arithmetic-quality test. Use the
+900 USD demo input in the rehearsal and check the actual output before recording.
+
+An unchanged production replay then used the existing Session 9 five-case dataset,
+not a replacement of the failed exploratory question. All 5 returned 200, 24/24
+expected fact strings, and the required document. Full prompts, responses, source
+excerpts, latency, model settings and dataset SHA-256 are in
+`session-11-public-rag.json`. No prompt/model tuning or new base-model comparison
+was performed. Existing split labels are retained; Q5 was already used in Session 9
+and is not a fresh holdout. This five-case convenience sample is not a reliability
+estimate. Verdict for overall AI quality remains **INCONCLUSIVE**, while the
+specified source-bound deployment smoke cases passed.
+
+Three synthetic QA accounts in total (including the frozen replay account) and
+their test records remain in Neon; credentials were not printed or committed.
+No production data was deleted for cleanup.
+
+### Approved frontend-origin configuration
+
+On 9 September 2026 (around 20:27 WIB), with Aldian's explicit approval, added
+`FRONTEND_URL=https://kelana-ai-gold.vercel.app` to FastAPI Cloud and selected
+Save and Redeploy. The saved read-only field confirmed the exact value.
+Deployment `b0fa6c9e-aa41-4ceb-9598-afc3490a46b2` shows trigger Environment change,
+Ready/Live, and the same `bf3719f` application revision. Credentials were unchanged.
+
+Post-redeploy read-only checks:
+
+- OPTIONS `/api/v1/auth/me` from the production Vercel origin: 200 and
+  `Access-Control-Allow-Origin: https://kelana-ai-gold.vercel.app`.
+- The same OPTIONS request from `https://untrusted-origin.example`: 400,
+  `Disallowed CORS origin`. No wildcard permission was introduced.
+- Backend `/health` and `/docs`: 200 / 200.
+- Vercel `/about` and anonymous `/api/conversations`: 200 / 401.
+
+These checks verify the configuration change; the earlier 27 integration and
+5 RAG tests are separately timestamped evidence, not claimed as rerun here.
+This documentation-only checkpoint does not change application code or the
+frozen RAG result's tested revision. Aldian approved publishing these five
+documentation/evidence files with `Verify production deployment and RAG integration`.
+
+### Remaining release actions
+
+1. Aldian creates/logs into a production demo account and completes the browser
+   rehearsal, including chat UX. Record actual-phone and classmate feedback.
+2. Only tag Session 11 after its remaining gates are checked and Aldian approves
+   the tag. Session 12 recording/Drive/LMS are separate.
 
 ## Security and remaining external gates
 
@@ -124,28 +234,29 @@ claim that the updated Linux runtime has already passed.
   existing environment keys only; no password value was changed or copied.
 - Aldian completed login to Vercel, FastAPI Cloud and Neon. All three dashboards
   were inspected successfully after the initial expired login was resolved.
-- Vercel's unsubmitted import form initially selected FastAPI with root `./`.
-  The draft now selects Next.js and `frontend`, with server-side
+- Vercel's import form initially selected FastAPI with root `./`.
+  The submitted production configuration selects Next.js and `frontend`, with server-side
   `API_URL=https://kelana-ai-92865e66.fastapicloud.dev/api/v1` for Production and
   Preview. Eleven auto-detected empty backend variable entries were removed only
-  from that draft. No project deployment was submitted.
+  from that draft. The subsequent deployment is now Ready, as recorded above.
 - The original FastAPI Cloud key `DATABASE_URL` pointed to localhost, while the
   valid Neon connection was under the unused key `database_url_neon`. With Aldian's
   explicit approval, the former was renamed `DATABASE_URL_LOCAL_BACKUP` and the
   latter `DATABASE_URL`. Save Only was used before the code push. Reload confirmed
   the active key targets the Neon pooler and `kelanaai-db` with `sslmode=require`;
   the unused backup still targets localhost. No credential values are recorded here.
-- A read-only Neon query against `information_schema.tables` succeeded and found
-  no public base tables in `kelanaai-db`. Once the build and active connection
-  setting are corrected, startup can create the application's missing tables;
-  knowledge ingestion and real end-to-end checks are still required.
+- The first read-only Neon query found no public base tables. After startup was
+  fixed, the same query returned all five application tables. Ingestion and public
+  proxy integration have since passed, as recorded above.
 - An AST index refresh (`graphify update .`) was blocked by the execution safety
   reviewer over possible external code transmission. It was not bypassed; graph
   freshness is unverified and is not needed to claim the test results above.
-- Before release: approve/publish the startup follow-up, verify the new runtime and
-  Neon/Bedrock, ingest the public reference documents into the confirmed target,
-  deploy Vercel and complete the public acceptance checklist.
+- Before the final release tag: complete the remaining human checks. Publication
+  of this evidence is approved, but it does not constitute a completed Session 12
+  video submission.
 
 The implementation followed the brief-to-build workflow: preserve existing
 architecture and scope, add missing deployment/UX pieces, and keep local versus
-production proof separate. No recording, Drive sharing or LMS submission is claimed.
+production proof separate. The AI-output-evaluator evidence-audit guidance kept
+the unsupported exploratory answer visible and separated integration success from
+general answer-quality claims. No recording, Drive sharing or LMS submission is claimed.

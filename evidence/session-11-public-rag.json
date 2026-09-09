@@ -1,0 +1,217 @@
+{
+  "started_at_utc": "2026-09-09T08:33:23.805429+00:00",
+  "endpoint": "https://kelana-ai-gold.vercel.app/api/assistant",
+  "deployed_commit": "bf3719f262b3cc710d58bc6c34c764c296394fc5",
+  "dataset_revision": "2026-09-02-bangladesh-v2",
+  "dataset_sha256": "031cc8e6e2a01db877553db3ecbff9a55cd5903ab4d9bf16b4d73d0b0e2ffc9e",
+  "model": "amazon.nova-lite-v1:0",
+  "region": "ap-southeast-2",
+  "temperature": 0.0,
+  "max_tokens": 500,
+  "grader": "Session 9 unchanged accepted-string matching plus required-source and grounded checks",
+  "comparison": "Current production replay only; no new base-model run or candidate tuning.",
+  "limitations": "Five-case convenience sample; matching strings do not establish general factual reliability. Q5 retains its original holdout label but has previously been used in Session 9.",
+  "results": [
+    {
+      "case_id": "bangladesh.khagrachari.001",
+      "split": "targeted",
+      "question": "According to the Bangladesh Tourist Hand Book, how far is Khagrachari from Chattogram, which three rivers pass through the district, and what is its main attraction?",
+      "http_status": 200,
+      "latency_seconds": 4.249,
+      "facts_present": 5,
+      "facts_total": 5,
+      "missing_facts": [],
+      "required_source_hit": true,
+      "passed": true,
+      "response": {
+        "question": "According to the Bangladesh Tourist Hand Book, how far is Khagrachari from Chattogram, which three rivers pass through the district, and what is its main attraction?",
+        "answer": "Khagrachari is 112 km from Chattogram. The three rivers that pass through the district are Chengi, Kasalong, and Maini. The main attraction of Khagrachari is Alutila, a mysterious cave. \n\n[Source: bangladesh-tourist-handbook.pdf, PDF page 38]",
+        "sources": [
+          {
+            "document": "bangladesh-tourist-handbook.pdf",
+            "excerpt": " Nilachal, \nvisitors can see some tribe villages \nwith their raw natural expression.\nMode of transport: By road/air/train \nfrom Dhaka.\n\n## PDF page 37\n\nNafakhum Waterfall\nhttps://goo.gl/maps/ahJdRUjogz9jFfC17\nY ou will be surprised to see \nNafakhum, the most beautiful \nwaterfall in Bangladesh and you will \nhave the feeling of visiting Niagara. \nThis gigantic waterfall is a perfect \nplace for adven",
+            "score": 0.5832
+          },
+          {
+            "document": "bangladesh-tourist-handbook.pdf",
+            "excerpt": "ass now \nthrough the district. Alutila, a mysterious Cave, is the main \nattraction of Khagrachari.\nMode of transport: By road from Chattogram airport.\n\n## PDF page 39\n\nAlutila Mysterious Cave\nhttps://goo.gl/maps/HmYLb158nF9Eb72d7\nAlutila cave is a wonderful \nadventurous tourist attraction in the \nhill district of khagrachari. The cave is \n150 meter long and the foot of Alutila \nhill surrounded by ",
+            "score": 0.5486
+          },
+          {
+            "document": "bangladesh-tourist-handbook.pdf",
+            "excerpt": "ad \nfrom the Bengal delta to China and \nCentral Asia.\nMode of transport: By road with taxi/\nthree/wheeler/bus from anywhere in \nDhaka.\n\n## PDF page 26\n\n• Sitakundu\n• Foy’s Lake\n• Chattogram War Cemetery\n• Kaptai Lake\n• Cox’s Bazar\n• Inani Beach\n• Moheshkhali Island\n• Saint Martin’s Island\n• The Buddha Dhatu Jadi\n• Nilachal\n• Nafakhum Waterfall\n• Khagrachari\n• Alutila-Mysterious Cave\n• Sajeek and M",
+            "score": 0.5094
+          },
+          {
+            "document": "bangladesh-tourist-handbook.pdf",
+            "excerpt": "\n• Nafakhum Waterfall\n• Khagrachari\n• Alutila-Mysterious Cave\n• Sajeek and Marissa Valley\n• Nijhum Island\nTOURIST SPOTS IN \nCHATTOGRAM\n\n## PDF page 27\n\nSitakundu\nhttps://goo.gl/maps/5WezSuXjqMuN81ya6\nArmenian Church is one of the \nhistorically significant architectural \nmonuments in Dhaka city. The \nchurch was built in 1781 by Armenian \nOrthodox communities. Every \nyear thousands of tourist travel",
+            "score": 0.4736
+          }
+        ],
+        "grounded": true,
+        "mode": "local-vector-store"
+      }
+    },
+    {
+      "case_id": "bangladesh.saint-martin.002",
+      "split": "targeted",
+      "question": "According to the Bangladesh Tourist Hand Book, what is Saint Martin's Island's national status and nickname, and what happens to Cheera-Dwip during tides?",
+      "http_status": 200,
+      "latency_seconds": 3.273,
+      "facts_present": 4,
+      "facts_total": 4,
+      "missing_facts": [],
+      "required_source_hit": true,
+      "passed": true,
+      "response": {
+        "question": "According to the Bangladesh Tourist Hand Book, what is Saint Martin's Island's national status and nickname, and what happens to Cheera-Dwip during tides?",
+        "answer": "Saint Martin's Island is the only coral island of Bangladesh and is known as the \"Pearl of the Sea.\" Cheera-Dwip is a part of St. Martin’s Island but is divided during tides. \n\n[Source: bangladesh-tourist-handbook.pdf], PDF page 34",
+        "sources": [
+          {
+            "document": "bangladesh-tourist-handbook.pdf",
+            "excerpt": "site of the island where thousands of Hindu \ndevotees congregate on an annual occasion.\nMode of transport: By road, or air From Dhaka.\n\n## PDF page 34\n\nSaint Martin’s Island\nhttps://goo.gl/maps/z1AfRFEuuh72esAY6\nSaint Martin’s Island is the only coral island of Bangladesh \nand the Pearl of Sea. Y ou will have a day of relaxation and \nfun on the picture-postcard beaches and to enjoy a swim and \nsno",
+            "score": 0.5804
+          },
+          {
+            "document": "bangladesh-tourist-handbook.pdf",
+            "excerpt": " \nsnorkeling the lagoon. Cheera-Dwip is a part of St. Martin’s \nIsland but divided during tides.\nMode of transport: By bus/launch/air.\n\n## PDF page 35\n\nhttps://goo.gl/maps/EG7TWJCj188Fa5CY8\nY ou will surely get impressed by the structure and \nview of the Golden temple in Bandarban which is \nknown as Buddha Dhatu Jadi. Set atop a 60m hill, \nthis temple exhibits unique Arakanese Architecture \nwith t",
+            "score": 0.5732
+          },
+          {
+            "document": "bangladesh-tourist-handbook.pdf",
+            "excerpt": "## PDF page 1\n\nBANGLADESH\nTOURIST\nHAND BOOK\n\n## PDF page 2\n\nABOUT\nBANGLADESH\n\n## PDF page 3\n\nOfficial Name  :\nGeographical Location :\nArea   :\nBoundaries   :\nCapital City  :\nOther Major Cities  :\nStandard Time  :\nClimate Variation  :\nRainfall   :\nHumidity   :\nLanguage   :\nprincipal Crops  :\nPrincipal Rivers  :\nPrincipal Industries  :\nPrincipal Exports  :\nPrincipal Imports  :\nElectricity   :\nCurren",
+            "score": 0.3864
+          },
+          {
+            "document": "bangladesh-tourist-handbook.pdf",
+            "excerpt": "## PDF page 1\n\nBANGLADESH\nTOURIST\nHAND BOOK\n\n## PDF page 2\n\nABOUT\nBANGLADESH\n\n## PDF page 3",
+            "score": 0.3527
+          }
+        ],
+        "grounded": true,
+        "mode": "local-vector-store"
+      }
+    },
+    {
+      "case_id": "bangladesh.karamjal.003-v2",
+      "split": "targeted",
+      "question": "According to the Sundarbans brochure, whose permission is needed before entering through Karamjal, what official station is Karamjal, and what kind of breeding center does it also serve as?",
+      "http_status": 200,
+      "latency_seconds": 2.929,
+      "facts_present": 3,
+      "facts_total": 3,
+      "missing_facts": [],
+      "required_source_hit": true,
+      "passed": true,
+      "response": {
+        "question": "According to the Sundarbans brochure, whose permission is needed before entering through Karamjal, what official station is Karamjal, and what kind of breeding center does it also serve as?",
+        "answer": "To enter the Sundarbans through Karamjal, permission from the local forest station is needed. Karamjal is a Forest Rangers station and also serves as a deer-breeding center.\n\n[Source: bangladesh-sundarbans.pdf]",
+        "sources": [
+          {
+            "document": "bangladesh-sundarbans.pdf",
+            "excerpt": "fabulous things \noneself with the serenity and tranquility of \nnature should not miss the opportunity \nto visit this spectacular place.\n\n## PDF page 7\n\nKaramjal: Karamjal is the gateway to enter the Sundarbans after obtaining \npermission from the local forest station. To view the most precious species of \nwildlife, thousands of visitors make their way to Karamjal, a Forest Rangers \nstation, deep i",
+            "score": 0.4359
+          },
+          {
+            "document": "bangladesh-sundarbans.pdf",
+            "excerpt": "ewing from tiger to \ndeer and other wildlife. There is a watch tower near Katka beach for wildlife \nviewing.\nINDULGE YOURSELF TO\nNATURE\n\n## PDF page 8\n\nKachikhali (Tiger Point)  \n Kachikhali is one of the attractive \nplaces of the Sundarbans under \nSharonkhola Forest range. It is \nabout 11-12 hours journey through \nriver from Khulna to Kachikhali. The \nplace, also known as Tiger Point, \nis famous ",
+            "score": 0.2685
+          },
+          {
+            "document": "bangladesh-sundarbans.pdf",
+            "excerpt": "oney. The innovative honey collection process, \nman who was attacked and returned with life by dint of his luck.\nLIFE IN THE SUNDARBANS\n\n## PDF page 4\n\nHabitat of the Royal \nBengal\nTiger\nThe Sundarbans is the natural habitat of \nthe Royal Bengal Tiger. It looks graceful \nand is the largest and most powerful sub \nspecies of the cat family. They constitute \nhalf of the wild tigers. They can swim, \nc",
+            "score": 0.22
+          },
+          {
+            "document": "bangladesh-sundarbans.pdf",
+            "excerpt": "ngest canine. The Royal \nBengal Tiger is a highly endanger animal. \nThey have a very mighty roar that scares \npeople and other animals.\n\n## PDF page 5\n\nThe sundarbans is home for 334 species of trees, \nshrubs and epiphytes. It harbors 269 species of wild \nanimals, 35 species of reptiles and 270 species of \nbirds. Fauna include Royal Bengal Tiger, spotted \ndeer, monkeys, crocodiles, jungle fowl, wi",
+            "score": 0.1988
+          }
+        ],
+        "grounded": true,
+        "mode": "local-vector-store"
+      }
+    },
+    {
+      "case_id": "bangladesh.kachikhali.004",
+      "split": "regression",
+      "question": "According to the Sundarbans brochure, which destination is about an 11-12 hour river journey from Khulna, what is its other name, and which forest range contains it?",
+      "http_status": 200,
+      "latency_seconds": 2.681,
+      "facts_present": 4,
+      "facts_total": 4,
+      "missing_facts": [],
+      "required_source_hit": true,
+      "passed": true,
+      "response": {
+        "question": "According to the Sundarbans brochure, which destination is about an 11-12 hour river journey from Khulna, what is its other name, and which forest range contains it?",
+        "answer": "Kachikhali is about an 11-12 hour river journey from Khulna. It is also known as Tiger Point and is located in the Sharonkhola Forest range. [Source: bangladesh-sundarbans.pdf]",
+        "sources": [
+          {
+            "document": "bangladesh-sundarbans.pdf",
+            "excerpt": "ewing from tiger to \ndeer and other wildlife. There is a watch tower near Katka beach for wildlife \nviewing.\nINDULGE YOURSELF TO\nNATURE\n\n## PDF page 8\n\nKachikhali (Tiger Point)  \n Kachikhali is one of the attractive \nplaces of the Sundarbans under \nSharonkhola Forest range. It is \nabout 11-12 hours journey through \nriver from Khulna to Kachikhali. The \nplace, also known as Tiger Point, \nis famous ",
+            "score": 0.5457
+          },
+          {
+            "document": "bangladesh-world-heritage-tour.pdf",
+            "excerpt": "p by for lunch \nat a restaurant in Kushtia and continue to Khulna. After checking-in at the Hotel Castle Salam \nyou have time to enjoy your and relax.\n\nDay – 05 Khulna-Bagerhat-Sundarban  \nAfter breakfast we drive you to Bagerhat (45mins / 30km), visit Grameen Bank Micro Credit \nprogram and explore the mosque heritage sites; 60-domed Mosque, Tomb of Khan Jahan Ali \n(builder of the Mosque), 9-domed",
+            "score": 0.4619
+          },
+          {
+            "document": "bangladesh-tourist-handbook.pdf",
+            "excerpt": "orld Heritage Site and \nthe most archaeological and historical \nmosque in Bangladesh.\nMode of transport: By road or train \nfrom Dhaka.\n\n## PDF page 65\n\nSundarbans\nhttps://goo.gl/maps/ptSbuucchDXjvKUL9\nThe Sundarbans, which means \n‘Beautiful Forest’ , is the largest littoral \nmangrove belt in the world and an \nUNESCO World Heritage Site. It \nis a bewitching empire of greenery \nstretching 80km (50mi",
+            "score": 0.4174
+          },
+          {
+            "document": "bangladesh-tourist-handbook.pdf",
+            "excerpt": "istory of this region.\nKhulna is famous for Sundarbans the largest mangrove \nforest in the world and the home of Royal Bengal \nTigers.\n\n## PDF page 10\n\n• National Martyrs’ Memorial\n• National Parliament House\n• Central Shaheed Minar\n• Curzon Hall\n• Bangladesh National Museum\n• Bangabandhu Memorial Museum\n• Liberation War Museum\n• Baitul Mukarram National Mosque\n• Ahsan Manzil\n• Dhakeshwari Nationa",
+            "score": 0.4171
+          }
+        ],
+        "grounded": true,
+        "mode": "local-vector-store"
+      }
+    },
+    {
+      "case_id": "bangladesh.world-heritage-day-5.005",
+      "split": "holdout",
+      "question": "In the World Heritage Tour document, what travel time and distance are listed on day 5 for Khulna to Bagerhat and Bagerhat to Mongla, and which four Bagerhat heritage stops are named?",
+      "http_status": 200,
+      "latency_seconds": 2.92,
+      "facts_present": 8,
+      "facts_total": 8,
+      "missing_facts": [],
+      "required_source_hit": true,
+      "passed": true,
+      "response": {
+        "question": "In the World Heritage Tour document, what travel time and distance are listed on day 5 for Khulna to Bagerhat and Bagerhat to Mongla, and which four Bagerhat heritage stops are named?",
+        "answer": "On Day 5, the travel time from Khulna to Bagerhat is 45 minutes, covering a distance of 30 km. From Bagerhat to Mongla, the travel time is 1 hour, covering 52 km. The four Bagerhat heritage stops named are the 60-domed Mosque, Tomb of Khan Jahan Ali, 9-domed Mosque, and Thakur’s Pond.\n\n[Source: bangladesh-world-heritage-tour.pdf]",
+        "sources": [
+          {
+            "document": "bangladesh-world-heritage-tour.pdf",
+            "excerpt": "p by for lunch \nat a restaurant in Kushtia and continue to Khulna. After checking-in at the Hotel Castle Salam \nyou have time to enjoy your and relax.\n\nDay – 05 Khulna-Bagerhat-Sundarban  \nAfter breakfast we drive you to Bagerhat (45mins / 30km), visit Grameen Bank Micro Credit \nprogram and explore the mosque heritage sites; 60-domed Mosque, Tomb of Khan Jahan Ali \n(builder of the Mosque), 9-domed",
+            "score": 0.5655
+          },
+          {
+            "document": "bangladesh-world-heritage-tour.pdf",
+            "excerpt": "## PDF page 1\n\nWORLD HERITAGE TOUR  \n(12 NIGHTS, 13 DAYS) \nPlace to visit: (DHAKA-BOGURA-PAHARPUR-RAJSHAHI-KHHULNA- SREEMANGAL -\nSUNDARBAN CHATTOGRAM-BANDARBAN-COXSBAZAR)\n\nDay – 01 Dhaka  \nYou arrive at Dhaka international airport & meet our representative. We bring you to the \nhotel for check-in, depending on arrival time we go for sightseeing around the Parliament \nbuilding area (outside), the D",
+            "score": 0.461
+          },
+          {
+            "document": "bangladesh-world-heritage-tour.pdf",
+            "excerpt": " next to the highway and you continue to Bogra. After your arrival \nyou complete check-in to the hotel, have Dinner and relax for rest of the evening.\n\nDay – 03 Bogura- Mahasthangar -Paharpur- Rajshahi  \nAfter early morning breakfast you will visit Mahasthangar ruins (20 Mins drive), and continue \nto Paharpur (2.5hrs / 130km) to explore the Paharpur Buddhist Monastery. After lunch we \ndrive you to",
+            "score": 0.4556
+          },
+          {
+            "document": "bangladesh-world-heritage-tour.pdf",
+            "excerpt": "t Cumilla \n(3.5 hrs / 167km). After your arrival, you complete check-in at the hotel (4hrs / 200km) and \nenjoy Dinner at a local restaurant and relax.\n\nDay – 10 Chattogram– Bandarban \nWe start our day after early morning breakfast. Your sightseeing at Chittagong includes Shrine \nof Bayzid Bostami for ecample. After a early lunch we drive to Bandarban (2.5hrs / 80km) and \ncomplete check-in at the h",
+            "score": 0.378
+          }
+        ],
+        "grounded": true,
+        "mode": "local-vector-store"
+      }
+    }
+  ],
+  "passed": 5
+}
