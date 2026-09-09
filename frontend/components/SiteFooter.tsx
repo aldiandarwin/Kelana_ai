@@ -32,6 +32,7 @@ export function SiteFooter() {
           </p>
         </div>
         <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium text-white/65">
+          <Link className="transition hover:text-white" href="/about">About KelanaAI</Link>
           <Link className="transition hover:text-white" href="/">
             Home
           </Link>

@@ -12,6 +12,14 @@ factual travel question from trusted documents and name the document it used.
 Session 10 adds private conversation history, so a follow-up question can reuse
 the earlier turns in the selected chat after a reload.
 
+Session 11 adds cloud-ready backend packaging, idle-connection checks for Neon,
+public About/404 pages, accessible route loading, and recoverable error screens.
+Cloud deployment is not yet verified; see the current evidence before recording.
+
+- [Production deployment runbook](docs/session-11-deployment.md)
+- [Session 11 verification and remaining gates](evidence/session-11.md)
+- [Session 12 demo script and submission checklist](docs/session-12-demo.md)
+
 ## Session 3 - REST API with FastAPI
 
 The API exposes three endpoints:
@@ -376,7 +384,7 @@ backend/database.py       engine, SessionLocal, Base
 
 ## Requirements
 
-- Python 3.12 or newer
+- Python 3.13 (also pinned for FastAPI Cloud in `backend/.python-version`)
 - Node.js 20.9 or newer
 - PostgreSQL 16 or newer, running on `localhost:5432`
 - FastAPI
@@ -397,6 +405,11 @@ Create the isolated environment and install dependencies from the repository roo
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
+
+The root requirements file forwards to `backend/requirements.txt`, the single
+source of dependency versions. `fastapi[standard]` includes the CLI used to
+discover the application on FastAPI Cloud. Existing local environments should
+rerun the install command after pulling this configuration change.
 
 ## Set Up the Database
 
@@ -472,6 +485,75 @@ Open:
 - API: `http://localhost:8000`
 - Swagger UI: `http://localhost:8000/docs`
 - OpenAPI schema: `http://localhost:8000/openapi.json`
+
+## FastAPI Cloud Deployment Configuration
+
+The GitHub application directory is **`backend`**, not the repository root and
+not `backend/main.py`. The files needed to install and discover the API are in
+that directory:
+
+| File or setting | Purpose |
+|---|---|
+| `backend/requirements.txt` | Self-contained, pinned direct dependencies, including `fastapi[standard]` |
+| `backend/.python-version` | Select Python `3.13` instead of the provider's latest default |
+| `backend/main.py` | Standard FastAPI CLI discovery finds the `app` object |
+| Root `requirements.txt` | Forwards local installs to the same backend manifest |
+
+This uses the provider's supported requirements-file workflow; a `pyproject.toml`
+or a Dockerfile is not required. Do not copy a second dependency list into a new
+manifest. See [application directories](https://fastapicloud.com/docs/builds-and-deployments/application-directory/)
+and [existing-project setup](https://fastapicloud.com/docs/getting-started/existing-project/).
+
+The existing `backend/__init__.py` makes CLI discovery in the full checkout
+resolve to `backend.main:app`, with the repository root added to the import path.
+The explicit Uvicorn command from `backend/` remains `main:app`. Both load the
+same application source; do not remove package files just to change the displayed
+import string. The deployment test exercises the CLI's discovered application.
+
+Before starting the cloud app, configure its Environment Variables from the
+names in `.env.example`. In particular, `DATABASE_URL` must be the Neon connection
+string with the SSL parameters supplied by Neon. Set a valid Bedrock credential,
+`AWS_REGION`, `MODEL_ID`, and a strong `JWT_SECRET_KEY` of at least 32 characters.
+The token-lifetime key used by this repo is `ACCESS_TOKEN_EXPIRE_MINUTES`.
+Use secret fields for credentials; never commit or publish their values.
+
+The existing startup creates missing tables and inspects the schema, so database
+access is needed when the application is imported. A successful image build does
+not prove database connectivity, Bedrock access, or that Neon contains the RAG
+documents. Those require separate cloud checks. Local `.env` files are ignored
+by Git and do not automatically become cloud environment variables.
+
+To verify CLI discovery locally after installing the updated requirements, run
+from `backend/`:
+
+```powershell
+..\.venv\Scripts\python.exe -m fastapi dev
+```
+
+This is a local server command, not a deployment command. For an isolated check
+that does not use the configured database or AWS credentials, run the deployment
+tests from the repository root:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest tests.test_deployment_config -v
+```
+
+After the changes have been reviewed and approved for commit/push, the GitHub
+integration can build the new commit using the existing `backend` setting.
+Confirm that the deployment uses that new commit before examining its build and
+startup logs. Then test `/health`, `/docs`, authenticated database operations,
+RAG, and conversational memory. Point Vercel's server-side `API_URL` to
+`https://<backend-host>/api/v1`; set `FRONTEND_URL` to the final Vercel origin.
+
+The original build log showed `Installing Python interpreter` followed by
+`No such file or directory (os error 2)` without naming the missing path. These
+changes close the observed repository-packaging gaps; they do not by themselves
+prove that the provider's image build is fixed. If that same early error remains,
+retain the failed build details for provider troubleshooting. The dashboard's
+CDN **Purge Cache** button is not a dependency or Python-installation fix.
+
+Full Session 11 deployment/homework and the `session-11` release tag remain
+separate acceptance steps; this configuration change is not a completed release.
 
 ## Run the Frontend
 

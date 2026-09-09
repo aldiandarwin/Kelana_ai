@@ -24,6 +24,10 @@ if DATABASE_URL.startswith("sqlite"):
     engine_options["connect_args"] = {"check_same_thread": False}
     if DATABASE_URL.endswith(":memory:"):
         engine_options["poolclass"] = StaticPool
+else:
+    # Neon can suspend while idle. Replace stale pooled connections on checkout.
+    engine_options["pool_pre_ping"] = True
+    engine_options["connect_args"] = {"connect_timeout": 10}
 
 engine = create_engine(DATABASE_URL, **engine_options)
 

@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { requiresAuthentication } from "@/lib/authRoutes";
 
 import {
   AuthServiceError,
@@ -22,6 +23,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const requiresAuth = requiresAuthentication(pathname);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -54,8 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (
           error instanceof AuthServiceError &&
           error.status === 401 &&
-          pathname !== "/login" &&
-          pathname !== "/register"
+          requiresAuth
         ) {
           router.replace("/login");
         }
@@ -66,8 +67,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     function handleUnauthorized() {
       setUser(null);
-      router.replace("/login");
-      router.refresh();
+      if (requiresAuth) {
+        router.replace("/login");
+        router.refresh();
+      }
     }
 
     window.addEventListener("kelana:unauthorized", handleUnauthorized);
@@ -75,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       active = false;
       window.removeEventListener("kelana:unauthorized", handleUnauthorized);
     };
-  }, [pathname, router]);
+  }, [pathname, requiresAuth, router]);
 
   const logout = useCallback(async () => {
     try {

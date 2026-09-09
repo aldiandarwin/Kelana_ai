@@ -39,7 +39,7 @@ export function SiteHeader({ overlay = false }: { overlay?: boolean }) {
     >
       <nav
         aria-label="Primary navigation"
-        className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8 lg:px-10"
+        className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-5 sm:px-8 lg:px-10"
       >
         <Link
           href="/"
@@ -59,7 +59,9 @@ export function SiteHeader({ overlay = false }: { overlay?: boolean }) {
           <span className="text-lg font-semibold tracking-tight">KelanaAI</span>
         </Link>
 
-        <div className="flex items-center gap-3 text-sm font-semibold sm:gap-5">
+        <div className="flex flex-wrap items-center gap-3 text-sm font-semibold sm:gap-5">
+          <Link className={"transition " + linkColor} href="/about">About</Link>
+          {user && <>
           <Link
             className={"hidden transition sm:inline " + linkColor}
             href="/"
@@ -120,6 +122,11 @@ export function SiteHeader({ overlay = false }: { overlay?: boolean }) {
           >
             Logout
           </button>
+          </>}
+          {!user && !loading && <>
+            <Link className={"transition " + linkColor} href="/login">Log in</Link>
+            <Link className="rounded-full bg-teal-800 px-4 py-2.5 text-white transition hover:bg-teal-700" href="/register">Get started</Link>
+          </>}
         </div>
       </nav>
     </header>

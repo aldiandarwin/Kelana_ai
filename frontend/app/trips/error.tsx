@@ -1,19 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 
 export default function TripsError({
-  reset,
+  retry,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }) {
-  const router = useRouter();
-
   return (
     <div className="flex min-h-screen flex-col bg-[#f5f7f2]">
       <SiteHeader />
@@ -29,15 +26,14 @@ export default function TripsError({
             Trip history is unavailable
           </h1>
           <p className="mx-auto mt-4 max-w-lg text-sm leading-6 text-rose-900/70">
-            KelanaAI could not reach the travel service. Make sure FastAPI and
-            PostgreSQL are running, then try again.
+            The travel service is temporarily unavailable. Wait a moment and
+            try again. Check your saved trips before repeating a recent request.
           </p>
           <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
             <button
               type="button"
               onClick={() => {
-                router.refresh();
-                reset();
+                retry();
               }}
               className="rounded-full bg-rose-900 px-6 py-3 text-sm font-bold text-white transition hover:bg-rose-800"
             >
